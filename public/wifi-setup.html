@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WiFi Network Setup</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #1a5db0 0%, #0d4a8a 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        h1 {
+            color: #1a5db0;
+            margin-bottom: 10px;
+            font-size: 1.8rem;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1rem;
+        }
+
+        .info-box {
+            background: #f0f5fc;
+            border-left: 4px solid #1a5db0;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+
+        .info-box h3 {
+            color: #1a5db0;
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+        }
+
+        .info-box p {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 8px;
+        }
+
+        .config-section {
+            margin-bottom: 30px;
+        }
+
+        .config-section h3 {
+            color: #333;
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .config-section h3 i {
+            color: #2e7d32;
+            font-size: 1.3rem;
+        }
+
+        .config-item {
+            background: #f8f9fc;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            border-left: 3px solid #e0e8f5;
+        }
+
+        .config-label {
+            color: #666;
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin-bottom: 6px;
+        }
+
+        .config-value {
+            background: white;
+            padding: 10px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            color: #1a5db0;
+            font-weight: 600;
+            word-break: break-all;
+            border: 1px solid #e0e8f5;
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+        }
+
+        .status.success {
+            background: #c8e6c9;
+            color: #2e7d32;
+        }
+
+        .status.info {
+            background: #e3f2fd;
+            color: #1a5db0;
+        }
+
+        .status i {
+            font-size: 1.3rem;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .status p {
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 30px;
+        }
+
+        button {
+            flex: 1;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: #2e7d32;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #27652a;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(46, 125, 50, 0.3);
+        }
+
+        .btn-secondary {
+            background: #1a5db0;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #0d4a8a;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(26, 93, 176, 0.3);
+        }
+
+        .code-block {
+            background: #333;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            overflow-x: auto;
+            margin-top: 10px;
+        }
+
+        .copy-btn {
+            background: #1a5db0;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            margin-top: 10px;
+        }
+
+        .copy-btn:hover {
+            background: #0d4a8a;
+        }
+
+        .device-list {
+            list-style: none;
+            margin-top: 12px;
+        }
+
+        .device-list li {
+            padding: 8px 0;
+            color: #666;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .device-list i {
+            color: #2e7d32;
+            font-size: 1.1rem;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 25px;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1><i class="fas fa-wifi" style="color: #2e7d32;"></i> WiFi Network Setup</h1>
+        <p class="subtitle">Configure your Smart Kidney Monitoring System for WiFi communication</p>
+
+        <!-- Config Status -->
+        <div id="configStatus" class="status info" style="display: none;">
+            <i class="fas fa-info-circle"></i>
+            <div>
+                <p>Server configuration loaded successfully.</p>
+            </div>
+        </div>
+
+        <!-- Configuration Details -->
+        <div class="config-section">
+            <h3><i class="fas fa-server"></i> Server Configuration</h3>
+            
+            <div class="config-item">
+                <div class="config-label">Server IP Address</div>
+                <div class="config-value" id="serverIP">Loading...</div>
+            </div>
+
+            <div class="config-item">
+                <div class="config-label">Server Port</div>
+                <div class="config-value" id="serverPort">3000</div>
+            </div>
+
+            <div class="config-item">
+                <div class="config-label">Web Dashboard URL</div>
+                <div class="config-value" id="dashboardURL">Loading...</div>
+            </div>
+
+            <div class="config-item">
+                <div class="config-label">WebSocket URL</div>
+                <div class="config-value" id="websocketURL">Loading...</div>
+            </div>
+
+            <div class="config-item">
+                <div class="config-label">ML API URL</div>
+                <div class="config-value" id="apiURL">Loading...</div>
+            </div>
+        </div>
+
+        <!-- Hardware Configuration -->
+        <div class="config-section">
+            <h3><i class="fas fa-microchip"></i> Hardware (ESP32) Configuration</h3>
+            
+            <p style="color: #666; margin-bottom: 15px;">Update your ESP32 firmware with these settings:</p>
+
+            <div class="code-block">
+// WiFi Settings
+const char* ssid = "YOUR_WIFI_SSID";
+const char* password = "YOUR_WIFI_PASSWORD";
+
+// Server Configuration
+const char* serverIP = "<span id="esp32IP">loading...</span>";
+const int serverPort = 3000;
+
+// API Endpoints
+String sensorDataURL = "http://" + String(serverIP) + ":3000/api/sensor-data";
+            </div>
+
+            <button class="copy-btn" onclick="copyToClipboard('esp32Code')">Copy Code</button>
+        </div>
+
+        <!-- Client Access -->
+        <div class="config-section">
+            <h3><i class="fas fa-laptop"></i> Access from Client Devices</h3>
+            
+            <p style="color: #666; margin-bottom: 15px;">Use these URLs to access the dashboard:</p>
+
+            <ul class="device-list">
+                <li>
+                    <i class="fas fa-check-circle"></i>
+                    <strong>Same Computer (Local):</strong>
+                    <div style="display: block; margin-top: 5px; margin-left: 31px;">
+                        <code style="background: #f0f5fc; padding: 5px 10px; border-radius: 4px;">http://localhost:3000</code>
+                    </div>
+                </li>
+                <li>
+                    <i class="fas fa-check-circle"></i>
+                    <strong>Other Computers/Phones:</strong>
+                    <div style="display: block; margin-top: 5px; margin-left: 31px;">
+                        <code id="networkURL" style="background: #f0f5fc; padding: 5px 10px; border-radius: 4px;">Loading...</code>
+                    </div>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Steps -->
+        <div class="info-box">
+            <h3>Setup Steps</h3>
+            <p><strong>1.</strong> Note the Server IP Address above</p>
+            <p><strong>2.</strong> Update ESP32 firmware with the IP address</p>
+            <p><strong>3.</strong> Ensure ESP32, hardware, and all devices are on the same WiFi</p>
+            <p><strong>4.</strong> Access dashboard using the URLs above</p>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="button-group">
+            <button class="btn-secondary" onclick="reloadConfig()">
+                <i class="fas fa-sync"></i> Reload Config
+            </button>
+            <button class="btn-primary" onclick="goToDashboard()">
+                <i class="fas fa-arrow-right"></i> Go to Dashboard
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Load server configuration
+        async function loadConfig() {
+            try {
+                const response = await fetch('/config.json');
+                if (response.ok) {
+                    const config = response.json();
+                    return config;
+                }
+            } catch (error) {
+                console.error('Error loading config:', error);
+            }
+            return null;
+        }
+
+        // Initialize page
+        async function initPage() {
+            const config = await loadConfig();
+            
+            if (config) {
+                // Update configuration display
+                document.getElementById('serverIP').textContent = config.serverIP;
+                document.getElementById('serverPort').textContent = config.serverPort;
+                document.getElementById('dashboardURL').textContent = `http://${config.serverIP}:${config.serverPort}`;
+                document.getElementById('websocketURL').textContent = `ws://${config.serverIP}:${config.serverPort}`;
+                document.getElementById('apiURL').textContent = `http://${config.serverIP}:5000`;
+                document.getElementById('networkURL').textContent = `http://${config.serverIP}:${config.serverPort}`;
+                document.getElementById('esp32IP').textContent = config.serverIP;
+                
+                // Show success status
+                document.getElementById('configStatus').style.display = 'flex';
+            } else {
+                // Use localhost if config not available
+                const ip = window.location.hostname || 'localhost';
+                const port = 3000;
+                document.getElementById('serverIP').textContent = ip;
+                document.getElementById('dashboardURL').textContent = `http://${ip}:${port}`;
+                document.getElementById('websocketURL').textContent = `ws://${ip}:${port}`;
+            }
+        }
+
+        function reloadConfig() {
+            location.reload();
+        }
+
+        function goToDashboard() {
+            const url = document.getElementById('dashboardURL').textContent;
+            window.location.href = url;
+        }
+
+        function copyToClipboard(elementId) {
+            const element = document.getElementById(elementId);
+            const text = element.innerText || element.textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Copied to clipboard!');
+            }).catch(() => {
+                alert('Failed to copy');
+            });
+        }
+
+        // Initialize on page load
+        window.addEventListener('load', initPage);
+    </script>
+</body>
+</html>

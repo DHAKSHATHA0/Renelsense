@@ -1,0 +1,2 @@
+This is a placeholder for the background image.
+In a real implementation, you would place your bg.jpg file here.

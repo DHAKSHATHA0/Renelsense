@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detailed Report - Smart Kidney Monitor</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <!-- Header Section -->
+    <header class="main-header">
+        <div class="container header-container">
+            <div class="logo-wrapper">
+                <div class="logo-icon">
+                    <i class="fas fa-heartbeat"></i>
+                </div>
+                <h1 class="project-name">Renal Sense</h1>
+            </div>
+            <nav class="main-nav">
+                <ul>
+                    <li><a href="index.html" class="nav-link">Home</a></li>
+                    <li><a href="live-test.html" class="nav-link">Live Test</a></li>
+                    <li><a href="result.html" class="nav-link">Result</a></li>
+                    <li><a href="history.html" class="nav-link">History</a></li>
+                    <li><a href="about.html" class="nav-link">About</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Report Header -->
+    <section class="report-header medical-gradient">
+        <div class="container">
+            <div class="report-title">
+                <h1>Comprehensive Medical Report</h1>
+                <p>RenalSense AI-Powered Kidney Function Analysis</p>
+            </div>
+            <div class="report-meta-info">
+                <div class="meta-box">
+                    <span class="meta-label">Patient ID:</span>
+                    <span class="meta-value">P-2024-001</span>
+                </div>
+                <div class="meta-box">
+                    <span class="meta-label">Report Date:</span>
+                    <span class="meta-value" id="reportDate">12/22/2024</span>
+                </div>
+                <div class="meta-box">
+                    <span class="meta-label">Test Duration:</span>
+                    <span class="meta-value">3 minutes 24 seconds</span>
+                </div>
+                <div class="meta-box">
+                    <span class="meta-label">Data Quality:</span>
+                    <span class="meta-value">98%</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Executive Summary -->
+    <section class="report-section">
+        <div class="container">
+            <h2 class="section-heading">Executive Summary</h2>
+            <div class="summary-box">
+                <div class="summary-content">
+                    <p><strong>Patient Status:</strong> Normal kidney function detected</p>
+                    <p><strong>eGFR Prediction:</strong> 78 mL/min/1.73m² (Normal Range: >90)</p>
+                    <p><strong>Clinical Interpretation:</strong> Kidney function is within normal parameters. Continue routine monitoring and maintain healthy lifestyle habits.</p>
+                    <p><strong>Recommendation:</strong> Annual check-ups recommended. No immediate intervention required.</p>
+                </div>
+                <div class="summary-stats">
+                    <div class="stat">
+                        <div class="stat-number">78</div>
+                        <div class="stat-label">eGFR</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-number">94%</div>
+                        <div class="stat-label">Confidence</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-number">Low</div>
+                        <div class="stat-label">Risk</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Raw Data Analysis -->
+    <section class="report-section alt-bg">
+        <div class="container">
+            <h2 class="section-heading">Raw Data Analysis</h2>
+            <div class="data-analysis">
+                <div class="analysis-column">
+                    <h3>Bioimpedance Spectroscopy</h3>
+                    <div class="data-table">
+                        <div class="table-row">
+                            <span class="table-label">1 kHz:</span>
+                            <span class="table-value">542.3 Ω</span>
+                        </div>
+                        <div class="table-row">
+                            <span class="table-label">10 kHz:</span>
+                            <span class="table-value">531.7 Ω</span>
+                        </div>
+                        <div class="table-row">
+                            <span class="table-label">100 kHz:</span>
+                            <span class="table-value">485.2 Ω</span>
+                        </div>
+                        <div class="table-row">
+                            <span class="table-label">200 kHz:</span>
+                            <span class="table-value">478.9 Ω</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="analysis-column">
+                    <h3>Vital Signs</h3>
+                    <div class="data-table">
+                        <div class="table-row">
+                            <span class="table-label">Heart Rate:</span>
+                            <span class="table-value">72 BPM</span>
+                        </div>
+                        <div class="table-row">
+                            <span class="table-label">Temperature:</span>
+                            <span class="table-value">36.8°C</span>
+                        </div>
+                        <div class="table-row">
+                            <span class="table-label">Motion:</span>
+                            <span class="table-value">12.5 mg</span>
+                        </div>
+                        <div class="table-row">
+                            <span class="table-label">Pressure:</span>
+                            <span class="table-value">101.2 kPa</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="analysis-column">
+                    <h3>Optical Signals</h3>
+                    <div class="data-table">
+                        <div class="table-row">
+                            <span class="table-label">Red (660nm):</span>
+                            <span class="table-value">8450 counts</span>
+                        </div>
+                        <div class="table-row">
+                            <span class="table-label">IR (940nm):</span>
+                            <span class="table-value">9230 counts</span>
+                        </div>
+                        <div class="table-row">
+                            <span class="table-label">Green:</span>
+                            <span class="table-value">7800 counts</span>
+                        </div>
+                        <div class="table-row">
+                            <span class="table-label">SNR:</span>
+                            <span class="table-value">42.3 dB</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Feature Extraction -->
+    <section class="report-section">
+        <div class="container">
+            <h2 class="section-heading">Extracted Features</h2>
+            <div class="features-table">
+                <div class="table-header">
+                    <div class="col">Feature Name</div>
+                    <div class="col">Value</div>
+                    <div class="col">Unit</div>
+                    <div class="col">Status</div>
+                </div>
+                <div class="table-rows">
+                    <div class="table-row-item">
+                        <div class="col">Bioimpedance Mean</div>
+                        <div class="col">542.3</div>
+                        <div class="col">Ω</div>
+                        <div class="col"><span class="status-badge good">Normal</span></div>
+                    </div>
+                    <div class="table-row-item">
+                        <div class="col">Heart Rate Variability</div>
+                        <div class="col">45.2</div>
+                        <div class="col">ms</div>
+                        <div class="col"><span class="status-badge good">Healthy</span></div>
+                    </div>
+                    <div class="table-row-item">
+                        <div class="col">Optical Signal Strength</div>
+                        <div class="col">87.5</div>
+                        <div class="col">%</div>
+                        <div class="col"><span class="status-badge good">Excellent</span></div>
+                    </div>
+                    <div class="table-row-item">
+                        <div class="col">Temperature Stability</div>
+                        <div class="col">0.3</div>
+                        <div class="col">°C</div>
+                        <div class="col"><span class="status-badge good">Stable</span></div>
+                    </div>
+                    <div class="table-row-item">
+                        <div class="col">Signal Quality Index</div>
+                        <div class="col">92.1</div>
+                        <div class="col">%</div>
+                        <div class="col"><span class="status-badge good">High</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ML Model Insights -->
+    <section class="report-section alt-bg">
+        <div class="container">
+            <h2 class="section-heading">AI Model Analysis</h2>
+            <div class="model-insights">
+                <div class="insight-card">
+                    <h3>Model Performance</h3>
+                    <ul class="insight-list">
+                        <li><strong>Algorithm:</strong> Gradient Boosting Regressor</li>
+                        <li><strong>Training Accuracy:</strong> 94.3%</li>
+                        <li><strong>Validation Accuracy:</strong> 92.8%</li>
+                        <li><strong>Cross-validation Score:</strong> 91.5%</li>
+                    </ul>
+                </div>
+                <div class="insight-card">
+                    <h3>Prediction Confidence</h3>
+                    <div class="confidence-meter">
+                        <div class="confidence-bar">
+                            <div class="confidence-fill" style="width: 94%"></div>
+                        </div>
+                        <p class="confidence-text">94% Confidence</p>
+                    </div>
+                </div>
+                <div class="insight-card">
+                    <h3>Feature Importance</h3>
+                    <ul class="insight-list">
+                        <li>Bioimpedance Features: 35%</li>
+                        <li>Optical Signals: 28%</li>
+                        <li>Vital Signs: 22%</li>
+                        <li>Environmental Factors: 15%</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Clinical Notes -->
+    <section class="report-section">
+        <div class="container">
+            <h2 class="section-heading">Clinical Notes</h2>
+            <div class="clinical-notes">
+                <div class="note-box">
+                    <h3><i class="fas fa-clipboard-check"></i> Observations</h3>
+                    <p>Patient demonstrates stable kidney function with consistent bioimpedance readings across all frequency ranges. Vital signs are within normal limits. No anomalies detected in optical signal patterns.</p>
+                </div>
+                <div class="note-box">
+                    <h3><i class="fas fa-prescription-bottle"></i> Recommendations</h3>
+                    <ul>
+                        <li>Continue current lifestyle and dietary habits</li>
+                        <li>Maintain regular physical activity (150 min/week)</li>
+                        <li>Follow up with routine screening in 12 months</li>
+                        <li>Stay hydrated and limit sodium intake</li>
+                    </ul>
+                </div>
+                <div class="note-box">
+                    <h3><i class="fas fa-exclamation-triangle"></i> Caution Notes</h3>
+                    <p>This report is generated by AI analysis and should be reviewed by a qualified healthcare professional. The predictions are based on extracted features and may not capture all clinical variables. Further testing may be required.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Download & Share -->
+    <section class="report-actions">
+        <div class="container">
+            <h2 class="section-heading">Actions</h2>
+            <div class="action-buttons">
+                <button class="btn btn-primary" onclick="downloadPDF()">
+                    <i class="fas fa-download"></i> Download PDF
+                </button>
+                <button class="btn btn-secondary" onclick="shareReport()">
+                    <i class="fas fa-share"></i> Share Report
+                </button>
+                <a href="history.html" class="btn btn-outline">
+                    <i class="fas fa-history"></i> View History
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <script src="js/main.js"></script>
+    <script src="js/report.js"></script>
+</body>
+</html>

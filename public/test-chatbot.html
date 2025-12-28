@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbot Diagnostic Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f9f9f9;
+            border-left: 4px solid #667eea;
+        }
+        .test-section h2 {
+            margin-top: 0;
+            color: #667eea;
+            font-size: 18px;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #5568d3;
+        }
+        .log {
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .message-input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+            margin: 10px 0;
+        }
+        .message-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Chatbot Diagnostic Tool</h1>
+        
+        <div class="test-section">
+            <h2>1️⃣ Server Connection Test</h2>
+            <p>Check if the server is running and accessible</p>
+            <button onclick="testServerConnection()">Test Connection</button>
+            <div id="connectionLog" class="log"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>2️⃣ Chatbot API Test</h2>
+            <p>Send a test message to the chatbot API</p>
+            <input type="text" id="testMessage" class="message-input" placeholder="Enter test message..." value="Hello, how can I improve my kidney health?">
+            <button onclick="testChatbotAPI()">Send Test Message</button>
+            <div id="apiLog" class="log"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>3️⃣ Browser Information</h2>
+            <div id="browserInfo" class="log"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>4️⃣ Quick Chat</h2>
+            <p>Try the chatbot directly here</p>
+            <input type="text" id="chatMessage" class="message-input" placeholder="Ask the chatbot..." value="">
+            <button onclick="sendChatMessage()">Send Message</button>
+            <div id="chatLog" class="log"></div>
+        </div>
+    </div>
+
+    <script>
+        function log(elementId, message) {
+            const element = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            element.innerHTML += `[${timestamp}] ${message}\n`;
+            element.scrollTop = element.scrollHeight;
+        }
+
+        function clearLog(elementId) {
+            document.getElementById(elementId).innerHTML = '';
+        }
+
+        async function testServerConnection() {
+            clearLog('connectionLog');
+            log('connectionLog', '🔍 Testing server connection...');
+            
+            try {
+                const startTime = Date.now();
+                const response = await fetch('http://localhost:3000/index.html');
+                const endTime = Date.now();
+                
+                if (response.ok) {
+                    log('connectionLog', `✅ Server is accessible!`);
+                    log('connectionLog', `⏱️ Response time: ${endTime - startTime}ms`);
+                    log('connectionLog', `📍 URL: http://localhost:3000`);
+                    log('connectionLog', `🌍 Page title loaded: Yes`);
+                } else {
+                    log('connectionLog', `❌ Server responded with status: ${response.status}`);
+                }
+            } catch (error) {
+                log('connectionLog', `❌ Connection failed: ${error.message}`);
+                log('connectionLog', `📝 Details: ${error.toString()}`);
+                log('connectionLog', `💡 Make sure to run: node server.js`);
+            }
+        }
+
+        async function testChatbotAPI() {
+            clearLog('apiLog');
+            const message = document.getElementById('testMessage').value || 'Hello';
+            
+            log('apiLog', `📤 Sending message: "${message}"`);
+            log('apiLog', '📡 API Endpoint: http://localhost:3000/api/chatbot');
+            
+            try {
+                const startTime = Date.now();
+                const response = await fetch('http://localhost:3000/api/chatbot', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        patientResults: { eGFR: 85, status: 'Normal' },
+                        conversationHistory: []
+                    })
+                });
+                
+                const endTime = Date.now();
+                log('apiLog', `✅ Response received in ${endTime - startTime}ms`);
+                log('apiLog', `📊 Status: ${response.status} ${response.statusText}`);
+                
+                const data = await response.json();
+                log('apiLog', `✨ API Success: ${data.success}`);
+                log('apiLog', `📝 Reply (first 300 chars):\n${data.reply.substring(0, 300)}...`);
+                
+            } catch (error) {
+                log('apiLog', `❌ Error: ${error.message}`);
+                log('apiLog', `🔍 Error type: ${error.constructor.name}`);
+                log('apiLog', `💡 Check browser console (F12) for more details`);
+            }
+        }
+
+        async function sendChatMessage() {
+            clearLog('chatLog');
+            const message = document.getElementById('chatMessage').value.trim();
+            
+            if (!message) {
+                log('chatLog', '⚠️ Please enter a message');
+                return;
+            }
+            
+            log('chatLog', `👤 You: ${message}`);
+            log('chatLog', '⏳ Waiting for response...');
+            
+            try {
+                const response = await fetch('http://localhost:3000/api/chatbot', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        patientResults: { eGFR: 85, status: 'Normal' },
+                        conversationHistory: []
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    log('chatLog', `🤖 Bot: ${data.reply}`);
+                    document.getElementById('chatMessage').value = '';
+                } else {
+                    log('chatLog', `❌ API Error: ${data.message || 'Unknown error'}`);
+                }
+                
+            } catch (error) {
+                log('chatLog', `❌ Connection Error: ${error.message}`);
+            }
+        }
+
+        // Display browser info
+        function displayBrowserInfo() {
+            const info = document.getElementById('browserInfo');
+            info.innerHTML = `
+🌍 Location: ${window.location.href}
+🖥️ Hostname: ${window.location.hostname}
+🔌 Port: ${window.location.port || 'default (80 for http, 443 for https)'}
+📱 User Agent: ${navigator.userAgent.substring(0, 100)}...
+🔗 Protocol: ${window.location.protocol}
+✅ CORS Enabled: Check network requests in DevTools
+            `;
+        }
+
+        // Initialize on page load
+        window.addEventListener('load', displayBrowserInfo);
+
+        // Auto-test on load
+        console.log('Page loaded, you can run manual tests');
+    </script>
+</body>
+</html>

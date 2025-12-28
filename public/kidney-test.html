@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kidney Monitoring Test - Demographics & Results</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        /* Demographics Section */
+        .demographics-section {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+
+        .demographics-section h2 {
+            font-size: 20px;
+            margin-bottom: 25px;
+            color: #333;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #333;
+        }
+
+        /* Gender Selection Buttons */
+        .gender-buttons {
+            display: flex;
+            gap: 15px;
+        }
+
+        .gender-btn {
+            flex: 1;
+            padding: 15px 20px;
+            font-size: 16px;
+            font-weight: 600;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: capitalize;
+        }
+
+        .gender-btn:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .gender-btn.selected {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        /* Age Input */
+        .age-input {
+            width: 100%;
+            padding: 12px 15px;
+            font-size: 16px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            transition: border-color 0.3s ease;
+        }
+
+        .age-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        /* Buttons Section */
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 14px 20px;
+            font-size: 16px;
+            font-weight: 600;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        /* Test Status Section */
+        .test-status {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .test-status.active {
+            background: #d4edda;
+            border: 2px solid #28a745;
+        }
+
+        .test-status.inactive {
+            background: #f8f9fa;
+            border: 2px solid #ddd;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        .status-indicator.active {
+            background: #28a745;
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.inactive {
+            background: #ccc;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        /* Results Section */
+        .results-section {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 15px;
+            margin-top: 30px;
+            display: none;
+        }
+
+        .results-section.show {
+            display: block;
+            animation: slideIn 0.5s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result-item {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .result-label {
+            font-weight: 600;
+            color: #555;
+        }
+
+        .result-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .result-unit {
+            font-size: 12px;
+            color: #999;
+            margin-left: 5px;
+        }
+
+        /* Messages */
+        .message {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            display: none;
+        }
+
+        .message.show {
+            display: block;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .message.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        /* Sensor Data Display */
+        .sensor-data {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .sensor-card {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            border: 2px solid #eee;
+        }
+
+        .sensor-label {
+            font-size: 12px;
+            color: #999;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+
+        .sensor-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .sensor-unit {
+            font-size: 12px;
+            color: #999;
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .content {
+                padding: 20px;
+            }
+
+            .demographics-section {
+                padding: 20px;
+            }
+
+            .sensor-data {
+                grid-template-columns: 1fr;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏥 Kidney Monitoring Test</h1>
+            <p>Set your information and start the kidney health assessment</p>
+        </div>
+
+        <div class="content">
+            <!-- Messages -->
+            <div id="message" class="message"></div>
+
+            <!-- Demographics Section -->
+            <div class="demographics-section" id="demographicsSection">
+                <h2>📋 Your Information</h2>
+
+                <!-- Gender Selection -->
+                <div class="form-group">
+                    <label>Select Gender</label>
+                    <div class="gender-buttons">
+                        <button class="gender-btn" data-gender="male">
+                            👨 Male
+                        </button>
+                        <button class="gender-btn" data-gender="female">
+                            👩 Female
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Age Input -->
+                <div class="form-group">
+                    <label for="ageInput">Age (years)</label>
+                    <input 
+                        type="number" 
+                        id="ageInput" 
+                        class="age-input" 
+                        placeholder="Enter your age" 
+                        min="0" 
+                        max="150"
+                    >
+                </div>
+
+                <!-- Test Status -->
+                <div class="test-status inactive" id="testStatus">
+                    <span class="status-indicator inactive" id="statusIndicator"></span>
+                    <span id="statusText">Test Ready to Start</span>
+                </div>
+
+                <!-- Buttons -->
+                <div class="button-group">
+                    <button class="btn btn-primary" id="startTestBtn" onclick="startTest()">
+                        ▶ Start Test
+                    </button>
+                    <button class="btn btn-secondary" id="stopTestBtn" onclick="stopTest()" style="display:none;">
+                        ⏹ Stop Test
+                    </button>
+                </div>
+            </div>
+
+            <!-- Sensor Data Display (shown during test) -->
+            <div id="sensorDisplay" style="display:none;">
+                <h2 style="margin-bottom: 20px;">📡 Live Sensor Data</h2>
+                <div class="sensor-data" id="sensorData"></div>
+            </div>
+
+            <!-- Results Section (shown after test) -->
+            <div class="results-section" id="resultsSection">
+                <h2>✅ Test Results</h2>
+                <div id="resultsContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedGender = null;
+        let testRunning = false;
+        let currentTestData = [];
+        let sensorSubscription = null;
+
+        // Get server URL
+        function getServerURL() {
+            const protocol = window.location.protocol;
+            const hostname = window.location.hostname;
+            const port = window.location.port || (protocol === 'https:' ? 443 : 80);
+            return port ? `${protocol}//${hostname}:${port}` : `${protocol}//${hostname}`;
+        }
+
+        // Show message
+        function showMessage(text, type = 'info') {
+            const messageEl = document.getElementById('message');
+            messageEl.textContent = text;
+            messageEl.className = `message show ${type}`;
+            
+            if (type === 'success' || type === 'info') {
+                setTimeout(() => {
+                    messageEl.classList.remove('show');
+                }, 5000);
+            }
+        }
+
+        // Gender selection
+        document.querySelectorAll('.gender-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.gender-btn').forEach(b => b.classList.remove('selected'));
+                this.classList.add('selected');
+                selectedGender = this.dataset.gender;
+                console.log('Selected gender:', selectedGender);
+            });
+        });
+
+        // Validate demographics
+        function validateDemographics() {
+            const age = parseInt(document.getElementById('ageInput').value);
+            
+            if (!selectedGender) {
+                showMessage('Please select your gender', 'error');
+                return false;
+            }
+            
+            if (!age || age < 0 || age > 150) {
+                showMessage('Please enter a valid age (0-150)', 'error');
+                return false;
+            }
+            
+            return { gender: selectedGender, age: age };
+        }
+
+        // Set demographics on server
+        async function setDemographics(gender, age) {
+            try {
+                const response = await fetch(`${getServerURL()}/api/demographics`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ gender, age })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    console.log('✅ Demographics set:', data.demographics);
+                    return true;
+                } else {
+                    showMessage('Error setting demographics: ' + data.message, 'error');
+                    return false;
+                }
+            } catch (error) {
+                showMessage('Error: ' + error.message, 'error');
+                return false;
+            }
+        }
+
+        // Start test
+        async function startTest() {
+            const demographics = validateDemographics();
+            if (!demographics) return;
+
+            // Set demographics on server
+            const success = await setDemographics(demographics.gender, demographics.age);
+            if (!success) return;
+
+            // Disable input
+            document.querySelectorAll('.gender-btn').forEach(btn => btn.disabled = true);
+            document.getElementById('ageInput').disabled = true;
+            document.getElementById('startTestBtn').style.display = 'none';
+            document.getElementById('stopTestBtn').style.display = 'flex';
+            
+            // Update status
+            testRunning = true;
+            const statusEl = document.getElementById('testStatus');
+            statusEl.classList.remove('inactive');
+            statusEl.classList.add('active');
+            document.getElementById('statusIndicator').classList.add('active');
+            document.getElementById('statusText').textContent = 'Test Running...';
+
+            // Show sensor data
+            document.getElementById('sensorDisplay').style.display = 'block';
+            
+            // Start server test
+            try {
+                const response = await fetch(`${getServerURL()}/api/start-test`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                showMessage('✅ Test started! ' + data.message, 'success');
+                console.log('Test started:', data);
+            } catch (error) {
+                showMessage('Error starting test: ' + error.message, 'error');
+                stopTest();
+            }
+
+            // Listen to WebSocket for sensor updates
+            listenToSensorData();
+        }
+
+        // Stop test
+        async function stopTest() {
+            testRunning = false;
+            
+            // Re-enable input
+            document.querySelectorAll('.gender-btn').forEach(btn => btn.disabled = false);
+            document.getElementById('ageInput').disabled = false;
+            document.getElementById('startTestBtn').style.display = 'flex';
+            document.getElementById('stopTestBtn').style.display = 'none';
+            
+            // Update status
+            const statusEl = document.getElementById('testStatus');
+            statusEl.classList.remove('active');
+            statusEl.classList.add('inactive');
+            document.getElementById('statusIndicator').classList.remove('active');
+            document.getElementById('statusText').textContent = 'Test Stopped';
+
+            // Hide sensor data
+            document.getElementById('sensorDisplay').style.display = 'none';
+
+            // Stop server test
+            try {
+                const response = await fetch(`${getServerURL()}/api/stop-test`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                showMessage('⏹ Test stopped', 'info');
+                console.log('Test stopped:', data);
+            } catch (error) {
+                console.error('Error stopping test:', error);
+            }
+
+            // Show results
+            showResults();
+        }
+
+        // Listen to sensor data via WebSocket
+        function listenToSensorData() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const ws = new WebSocket(`${protocol}//${window.location.host}`);
+            
+            ws.onopen = () => {
+                console.log('✅ WebSocket connected');
+            };
+            
+            ws.onmessage = (event) => {
+                try {
+                    const message = JSON.parse(event.data);
+                    
+                    if (message.type === 'sensor_update') {
+                        displaySensorData(message.payload);
+                        currentTestData.push({
+                            timestamp: new Date().toISOString(),
+                            ...message.payload
+                        });
+                    }
+                } catch (error) {
+                    console.error('Error parsing message:', error);
+                }
+            };
+            
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+            };
+            
+            ws.onclose = () => {
+                console.log('WebSocket disconnected');
+            };
+            
+            // Store reference to close later
+            window.sensorWS = ws;
+        }
+
+        // Display sensor data
+        function displaySensorData(data) {
+            const sensorDataEl = document.getElementById('sensorData');
+            
+            let html = '';
+            
+            // ECG / Heart Rate
+            if (data.ecg) {
+                html += `
+                    <div class="sensor-card">
+                        <div class="sensor-label">❤️ Heart Rate</div>
+                        <div class="sensor-value">${data.ecg.heartRate}</div>
+                        <div class="sensor-unit">BPM</div>
+                    </div>
+                `;
+            }
+            
+            // Temperature
+            if (data.temperature) {
+                html += `
+                    <div class="sensor-card">
+                        <div class="sensor-label">🌡️ Temperature</div>
+                        <div class="sensor-value">${data.temperature}</div>
+                        <div class="sensor-unit">°C</div>
+                    </div>
+                `;
+            }
+            
+            // SpO2
+            if (data.spO2) {
+                html += `
+                    <div class="sensor-card">
+                        <div class="sensor-label">🫁 SpO2</div>
+                        <div class="sensor-value">${data.spO2}</div>
+                        <div class="sensor-unit">%</div>
+                    </div>
+                `;
+            }
+            
+            // Battery
+            if (data.battery) {
+                html += `
+                    <div class="sensor-card">
+                        <div class="sensor-label">🔋 Battery</div>
+                        <div class="sensor-value">${data.battery}</div>
+                        <div class="sensor-unit">%</div>
+                    </div>
+                `;
+            }
+            
+            sensorDataEl.innerHTML = html;
+        }
+
+        // Show results
+        function showResults() {
+            const resultsSection = document.getElementById('resultsSection');
+            const resultsContent = document.getElementById('resultsContent');
+            
+            if (currentTestData.length === 0) {
+                resultsContent.innerHTML = '<p>No test data collected</p>';
+            } else {
+                // Calculate averages
+                let avgHeartRate = 0;
+                let avgTemp = 0;
+                let avgSpO2 = 0;
+                
+                currentTestData.forEach(point => {
+                    if (point.ecg) avgHeartRate += parseFloat(point.ecg.heartRate);
+                    if (point.temperature) avgTemp += parseFloat(point.temperature);
+                    if (point.spO2) avgSpO2 += parseFloat(point.spO2);
+                });
+                
+                avgHeartRate = (avgHeartRate / currentTestData.length).toFixed(0);
+                avgTemp = (avgTemp / currentTestData.length).toFixed(1);
+                avgSpO2 = (avgSpO2 / currentTestData.length).toFixed(1);
+                
+                resultsContent.innerHTML = `
+                    <div class="result-item">
+                        <span class="result-label">Gender</span>
+                        <span class="result-value">${selectedGender.toUpperCase()}</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Age</span>
+                        <span class="result-value">${document.getElementById('ageInput').value}</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Avg Heart Rate</span>
+                        <span class="result-value">${avgHeartRate}<span class="result-unit">BPM</span></span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Avg Temperature</span>
+                        <span class="result-value">${avgTemp}<span class="result-unit">°C</span></span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Avg SpO2</span>
+                        <span class="result-value">${avgSpO2}<span class="result-unit">%</span></span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Data Points</span>
+                        <span class="result-value">${currentTestData.length}</span>
+                    </div>
+                `;
+            }
+            
+            resultsSection.classList.add('show');
+        }
+    </script>
+</body>
+</html>
