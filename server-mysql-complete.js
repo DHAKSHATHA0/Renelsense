@@ -906,45 +906,53 @@ app.post('/api/grok-chat', async (req, res) => {
 // SERVER START
 // ========================================
 
-const server = app.listen(PORT, async () => {
-    console.log('\n========================================');
-    console.log('🚀 SERVER STARTING...');
-    console.log('========================================\n');
+// Initialize database on startup (only on first run)
+(async () => {
+    try {
+        await createDatabaseIfNotExists();
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        await initializeDatabase();
+        console.log('✅ Database initialized');
+    } catch (error) {
+        console.error('❌ Database initialization error:', error);
+    }
+})();
 
-    // First, create database if it doesn't exist
-    await createDatabaseIfNotExists();
-    
-    // Wait a moment for database to be created
-    await new Promise(resolve => setTimeout(resolve, 1000));
+// Start server only if not running on Vercel (for local development)
+if (process.env.VERCEL !== '1') {
+    const server = app.listen(PORT, () => {
+        console.log('\n========================================');
+        console.log('🚀 SERVER STARTING...');
+        console.log('========================================\n');
+        console.log(`\n✅ Server running on http://localhost:${PORT}`);
+        console.log('\n📋 Available API Endpoints:');
+        console.log('   POST   /api/auth/register      - Register new user');
+        console.log('   POST   /api/auth/login         - Login user');
+        console.log('   POST   /api/users              - Add new user');
+        console.log('   GET    /api/users              - Get all users');
+        console.log('   GET    /api/users/:id          - Get single user');
+        console.log('   PUT    /api/users/:id          - Update user');
+        console.log('   DELETE /api/users/:id          - Delete user');
+        console.log('   POST   /api/test-results       - Save test result');
+        console.log('   GET    /api/test-results/user/:userId - Get test results');
+        console.log('\n========================================\n');
+    });
 
-    // Then initialize tables
-    await initializeDatabase();
+    // Handle server errors
+    server.on('error', (error) => {
+        console.error('❌ Server Error:', error);
+    });
 
-    console.log(`\n✅ Server running on http://localhost:${PORT}`);
-    console.log('\n📋 Available API Endpoints:');
-    console.log('   POST   /api/auth/register      - Register new user');
-    console.log('   POST   /api/auth/login         - Login user');
-    console.log('   POST   /api/users              - Add new user');
-    console.log('   GET    /api/users              - Get all users');
-    console.log('   GET    /api/users/:id          - Get single user');
-    console.log('   PUT    /api/users/:id          - Update user');
-    console.log('   DELETE /api/users/:id          - Delete user');
-    console.log('   POST   /api/test-results       - Save test result');
-    console.log('   GET    /api/test-results/user/:userId - Get test results');
-    console.log('\n========================================\n');
-});
+    // Graceful shutdown
+    process.on('SIGINT', async () => {
+        console.log('\n\n🛑 Shutting down server...');
+        server.close();
+        await pool.end();
+        await tempPool.end();
+        console.log('✅ Server stopped');
+        process.exit(0);
+    });
+}
 
-// Handle server errors
-server.on('error', (error) => {
-    console.error('❌ Server Error:', error);
-});
-
-// Graceful shutdown
-process.on('SIGINT', async () => {
-    console.log('\n\n🛑 Shutting down server...');
-    server.close();
-    await pool.end();
-    await tempPool.end();
-    console.log('✅ Server stopped');
-    process.exit(0);
-});
+// Export app for Vercel
+module.exports = app;
