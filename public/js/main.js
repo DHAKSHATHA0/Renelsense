@@ -4,18 +4,23 @@
 // NOTE: Default IPs will be overridden by config.json loaded from server
 let serverConfig = {
     serverIP: window.location.hostname,
-    serverPort: 3000,
+    serverPort: window.location.port ? parseInt(window.location.port) : null,
     mlApiIP: window.location.hostname,
     mlApiPort: 5000,
     getWebSocketURL: function() {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        return `${protocol}//${this.serverIP}:${this.serverPort}`;
+        const port = this.serverPort ? `:${this.serverPort}` : '';
+        return `${protocol}//${this.serverIP}${port}`;
     },
-    getAPIURL: function() {
-        return `http://${this.serverIP}:${this.serverPort}`;
+    getAPIURL: function(endpoint = '') {
+        const protocol = window.location.protocol;
+        const port = this.serverPort ? `:${this.serverPort}` : '';
+        return `${protocol}//${this.serverIP}${port}${endpoint}`;
     },
     getServerURL: function() {
-        return `http://${this.serverIP}:${this.serverPort}`;
+        const protocol = window.location.protocol;
+        const port = this.serverPort ? `:${this.serverPort}` : '';
+        return `${protocol}//${this.serverIP}${port}`;
     },
     getMLApiURL: function() {
         return `http://${this.mlApiIP}:${this.mlApiPort}`;
@@ -28,15 +33,15 @@ async function loadServerConfig() {
         const response = await fetch('/config.json');
         if (response.ok) {
             const config = await response.json();
-            serverConfig.serverIP = config.serverIP;
-            serverConfig.serverPort = config.serverPort;
-            serverConfig.mlApiIP = config.mlApiIP || 'localhost';
+            serverConfig.serverIP = config.serverIP || window.location.hostname;
+            serverConfig.serverPort = config.serverPort || window.location.port || null;
+            serverConfig.mlApiIP = config.mlApiIP || window.location.hostname;
             serverConfig.mlApiPort = config.mlApiPort || 5000;
-            console.log(`Server configured: ${config.serverIP}:${config.serverPort}`);
+            console.log(`Server configured: ${serverConfig.serverIP}${serverConfig.serverPort ? ':' + serverConfig.serverPort : ''}`);
             console.log(`ML API configured: ${serverConfig.mlApiIP}:${serverConfig.mlApiPort}`);
         }
     } catch (error) {
-        console.log('Using default server configuration (localhost:3000)');
+        console.log('Using location-based server configuration');
         console.log('Using default ML API configuration (localhost:5000)');
     }
 }
