@@ -167,8 +167,18 @@ async function initializeDatabase() {
 
 // Test endpoint to verify server is running
 app.get('/', (req, res) => {
-    // Root route serves login page, redirect to home if logged in is handled by client
-    res.sendFile(path.join(__dirname, 'public', 'signup.html'));
+    // Root route serves index page (home)
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Home route
+app.get('/home', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Index route
+app.get('/index', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // Signup route - serve signup page
@@ -209,6 +219,21 @@ app.get('/ai-assistant', (req, res) => {
 // Chatbot route - serve chatbot page
 app.get('/chatbot', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'chatbot.html'));
+});
+
+// Account route - serve account page
+app.get('/account', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'account.html'));
+});
+
+// Admin route - serve admin page
+app.get('/admin', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+
+// WiFi Setup route
+app.get('/wifi-setup', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'wifi-setup.html'));
 });
 
 // ========================================
