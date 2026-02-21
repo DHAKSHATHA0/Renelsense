@@ -181,6 +181,36 @@ app.get('/login', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
+// Result route - serve result page
+app.get('/result', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'result.html'));
+});
+
+// Report route - serve report page
+app.get('/report', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'report.html'));
+});
+
+// History route - serve history page
+app.get('/history', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'history.html'));
+});
+
+// Live Test route - serve live test page
+app.get('/live-test', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'live-test.html'));
+});
+
+// AI Assistant route - serve ai assistant page
+app.get('/ai-assistant', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'ai-assistant.html'));
+});
+
+// Chatbot route - serve chatbot page
+app.get('/chatbot', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'chatbot.html'));
+});
+
 // ========================================
 // AUTHENTICATION ENDPOINTS
 // ========================================
