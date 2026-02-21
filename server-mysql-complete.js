@@ -903,6 +903,31 @@ app.post('/api/grok-chat', async (req, res) => {
 });
 
 // ========================================
+// 404 AND ERROR HANDLING
+// ========================================
+
+// Catch-all route - serves index.html for SPA routing or 404 handling
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'), (err) => {
+        if (err) {
+            res.status(404).json({
+                success: false,
+                message: 'Page not found'
+            });
+        }
+    });
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+    console.error('❌ Server error:', err);
+    res.status(err.status || 500).json({
+        success: false,
+        error: err.message || 'Internal server error'
+    });
+});
+
+// ========================================
 // SERVER START
 // ========================================
 
