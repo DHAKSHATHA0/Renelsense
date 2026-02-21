@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MySQL Database Integration - User Management</title>
+    <style>
+        /* ========================================
+           STYLING FOR THE APPLICATION
+           ======================================== */
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 30px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+
+        @media (max-width: 768px) {
+            .content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .section {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .section h2 {
+            font-size: 20px;
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        /* ========================================
+           FORM STYLING
+           ======================================== */
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+            margin-left: 10px;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        button.btn-delete {
+            background: #e74c3c;
+            padding: 6px 12px;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        button.btn-delete:hover {
+            background: #c0392b;
+        }
+
+        /* ========================================
+           MESSAGE STYLING
+           ======================================== */
+
+        .message {
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            display: none;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+
+        .message.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+            display: block;
+        }
+
+        /* ========================================
+           LOADING SPINNER
+           ======================================== */
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* ========================================
+           TABLE STYLING
+           ======================================== */
+
+        .users-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: #f8f9fa;
+            position: sticky;
+            top: 0;
+        }
+
+        th {
+            padding: 12px;
+            text-align: left;
+            color: #333;
+            font-weight: 600;
+            border-bottom: 2px solid #dee2e6;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #dee2e6;
+            font-size: 14px;
+        }
+
+        tr:hover {
+            background: #f8f9fa;
+        }
+
+        .empty-message {
+            text-align: center;
+            color: #999;
+            padding: 20px;
+        }
+
+        /* ========================================
+           STATS STYLING
+           ======================================== */
+
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- ======================================== 
+             HEADER SECTION
+             ======================================== -->
+        <div class="header">
+            <h1>💾 MySQL Database Integration</h1>
+            <p>Add, View, Update, and Delete Users from MySQL Database</p>
+        </div>
+
+        <div class="content">
+            <!-- ======================================== 
+                 LEFT SIDE: FORM TO ADD USERS
+                 ======================================== -->
+            <div class="section">
+                <h2>➕ Add New User</h2>
+
+                <!-- Success/Error Messages -->
+                <div id="addUserMessage" class="message"></div>
+
+                <!-- HTML Form to collect user input -->
+                <!-- The form data will be sent to backend using JavaScript Fetch API -->
+                <form id="userForm">
+                    <!-- Name Input -->
+                    <div class="form-group">
+                        <label for="userName">Full Name *</label>
+                        <input 
+                            type="text" 
+                            id="userName" 
+                            placeholder="Enter full name"
+                            required
+                        >
+                    </div>
+
+                    <!-- Email Input -->
+                    <div class="form-group">
+                        <label for="userEmail">Email *</label>
+                        <input 
+                            type="email" 
+                            id="userEmail" 
+                            placeholder="Enter email address"
+                            required
+                        >
+                    </div>
+
+                    <!-- Phone Input -->
+                    <div class="form-group">
+                        <label for="userPhone">Phone Number</label>
+                        <input 
+                            type="tel" 
+                            id="userPhone" 
+                            placeholder="Enter phone number"
+                        >
+                    </div>
+
+                    <!-- Age Input -->
+                    <div class="form-group">
+                        <label for="userAge">Age</label>
+                        <input 
+                            type="number" 
+                            id="userAge" 
+                            placeholder="Enter age"
+                            min="1"
+                            max="120"
+                        >
+                    </div>
+
+                    <!-- Gender Dropdown -->
+                    <div class="form-group">
+                        <label for="userGender">Gender</label>
+                        <select id="userGender">
+                            <option value="">Select Gender</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div class="form-group">
+                        <button type="submit">Add User to Database</button>
+                        <button type="reset" class="btn-secondary">Clear Form</button>
+                    </div>
+                </form>
+
+                <!-- Statistics -->
+                <h2 style="margin-top: 30px;">📊 Statistics</h2>
+                <div class="stats">
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalUsers">0</div>
+                        <div class="stat-label">Total Users</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="lastUserId">-</div>
+                        <div class="stat-label">Last User ID</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ======================================== 
+                 RIGHT SIDE: DISPLAY ALL USERS
+                 ======================================== -->
+            <div class="section">
+                <h2>📋 All Users from Database</h2>
+
+                <!-- Info Message -->
+                <div id="usersMessage" class="message info">Loading users...</div>
+
+                <!-- Users Table -->
+                <div class="users-list">
+                    <table id="usersTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Age</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTableBody">
+                            <tr>
+                                <td colspan="5" class="empty-message">
+                                    <div class="loading"></div>
+                                    <p>Loading users...</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Refresh Button -->
+                <button 
+                    style="margin-top: 15px; width: 100%;" 
+                    onclick="fetchAllUsers()"
+                >
+                    🔄 Refresh List
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ======================================== 
+         JAVASCRIPT FETCH API CODE
+         ======================================== -->
+    <script>
+        // ========================================
+        // CONFIGURATION
+        // ========================================
+
+        // Base URL for API calls
+        // In production, change 'localhost:3000' to your actual server address
+        const API_URL = 'http://localhost:3000/api';
+
+        // ========================================
+        // FORM SUBMISSION HANDLER
+        // ========================================
+
+        // This function runs when user submits the form
+        // It collects form data and sends it to the backend using Fetch API
+        document.getElementById('userForm').addEventListener('submit', async (event) => {
+            // Prevent form from reloading the page
+            event.preventDefault();
+
+            // Show loading state
+            showMessage('addUserMessage', 'info', 'Adding user...');
+
+            try {
+                // ========================================
+                // STEP 1: COLLECT DATA FROM FORM
+                // ========================================
+
+                const name = document.getElementById('userName').value.trim();
+                const email = document.getElementById('userEmail').value.trim();
+                const phone = document.getElementById('userPhone').value.trim();
+                const age = document.getElementById('userAge').value;
+                const gender = document.getElementById('userGender').value;
+
+                // ========================================
+                // STEP 2: VALIDATE DATA (CLIENT-SIDE VALIDATION)
+                // ========================================
+
+                if (!name || !email) {
+                    showMessage('addUserMessage', 'error', '❌ Name and email are required!');
+                    return;
+                }
+
+                // ========================================
+                // STEP 3: SEND DATA TO BACKEND USING FETCH API
+                // ========================================
+
+                // This is the Fetch API request that sends data to server
+                // It uses POST method to add new data to database
+                const response = await fetch(`${API_URL}/users`, {
+                    method: 'POST',                              // POST request to add data
+                    headers: {
+                        'Content-Type': 'application/json'       // Tell server we're sending JSON
+                    },
+                    body: JSON.stringify({                       // Convert form data to JSON
+                        name,
+                        email,
+                        phone,
+                        age: age ? parseInt(age) : null,
+                        gender
+                    })
+                });
+
+                // ========================================
+                // STEP 4: HANDLE SERVER RESPONSE
+                // ========================================
+
+                // Parse the JSON response from server
+                const result = await response.json();
+
+                // Check if request was successful
+                if (response.ok && result.success) {
+                    showMessage('addUserMessage', 'success', '✅ ' + result.message);
+                    
+                    // Clear the form after successful submission
+                    document.getElementById('userForm').reset();
+                    
+                    // Refresh the users list to show the newly added user
+                    setTimeout(() => {
+                        fetchAllUsers();
+                    }, 800);
+
+                } else {
+                    // Show error message from server
+                    showMessage('addUserMessage', 'error', '❌ ' + (result.message || 'Error adding user'));
+                }
+
+            } catch (error) {
+                // Handle network errors (server not running, etc.)
+                console.error('Error:', error);
+                showMessage('addUserMessage', 'error', 
+                    '❌ Network Error: Make sure server is running on http://localhost:3000');
+            }
+        });
+
+        // ========================================
+        // FETCH AND DISPLAY ALL USERS
+        // ========================================
+
+        // This function retrieves all users from MySQL database
+        // It uses GET method to fetch data from the API
+        async function fetchAllUsers() {
+            try {
+                // Show loading message
+                showMessage('usersMessage', 'info', 'Fetching users...');
+
+                // ========================================
+                // STEP 1: SEND GET REQUEST TO SERVER
+                // ========================================
+
+                // This Fetch API request gets all users from database
+                const response = await fetch(`${API_URL}/users`, {
+                    method: 'GET'                               // GET request to retrieve data
+                });
+
+                // ========================================
+                // STEP 2: PARSE SERVER RESPONSE
+                // ========================================
+
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    // ========================================
+                    // STEP 3: DISPLAY DATA ON WEBPAGE
+                    // ========================================
+
+                    const users = result.data;
+                    const tableBody = document.getElementById('usersTableBody');
+
+                    // Clear previous table rows
+                    tableBody.innerHTML = '';
+
+                    // Check if there are any users
+                    if (users.length === 0) {
+                        tableBody.innerHTML = `
+                            <tr>
+                                <td colspan="5" class="empty-message">
+                                    No users found. Add a user to get started!
+                                </td>
+                            </tr>
+                        `;
+                    } else {
+                        // Loop through each user and add a row to the table
+                        users.forEach(user => {
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td>${user.id}</td>
+                                <td>${user.name}</td>
+                                <td>${user.email}</td>
+                                <td>${user.age || '-'}</td>
+                                <td>
+                                    <button class="btn-delete" onclick="deleteUser(${user.id}, '${user.name}')">
+                                        Delete
+                                    </button>
+                                </td>
+                            `;
+                            tableBody.appendChild(row);
+                        });
+                    }
+
+                    // Update statistics
+                    document.getElementById('totalUsers').textContent = users.length;
+                    if (users.length > 0) {
+                        document.getElementById('lastUserId').textContent = users[0].id;
+                    }
+
+                    // Hide message after successful fetch
+                    document.getElementById('usersMessage').style.display = 'none';
+
+                } else {
+                    showMessage('usersMessage', 'error', '❌ ' + (result.message || 'Error fetching users'));
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                showMessage('usersMessage', 'error', 
+                    '❌ Network Error: Make sure server is running on http://localhost:3000');
+            }
+        }
+
+        // ========================================
+        // DELETE USER FUNCTION
+        // ========================================
+
+        async function deleteUser(userId, userName) {
+            // Ask user for confirmation before deleting
+            if (!confirm(`Are you sure you want to delete ${userName}?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/users/${userId}`, {
+                    method: 'DELETE'                            // DELETE request to remove data
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    showMessage('usersMessage', 'success', '✅ User deleted successfully');
+                    setTimeout(() => {
+                        fetchAllUsers();
+                    }, 800);
+                } else {
+                    showMessage('usersMessage', 'error', '❌ ' + (result.message || 'Error deleting user'));
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                showMessage('usersMessage', 'error', '❌ Network Error');
+            }
+        }
+
+        // ========================================
+        // UTILITY FUNCTION: SHOW MESSAGES
+        // ========================================
+
+        // This helper function displays success/error messages to the user
+        function showMessage(elementId, type, message) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = `message ${type}`;
+            element.style.display = 'block';
+        }
+
+        // ========================================
+        // LOAD USERS WHEN PAGE LOADS
+        // ========================================
+
+        // Run this when the page first loads
+        window.addEventListener('DOMContentLoaded', () => {
+            console.log('📄 Page loaded. Fetching users from database...');
+            fetchAllUsers();
+        });
+    </script>
+</body>
+</html>

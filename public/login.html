@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Kidney Disorder Health Guide</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/auth-style.css">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-wrapper">
+            <!-- Left Section - Branding -->
+            <div class="auth-left">
+                <div class="auth-branding">
+                    <h1>Renel Sense</h1>
+                    <p>Your Personal kidney Health Monitoring System</p>
+                </div>
+                <div class="auth-features">
+                    <div class="feature-item">
+                        <span class="feature-icon">✓</span>
+                        <span>Get Test Reports</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">✓</span>
+                        <span>AI Diagnosis Assistant</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">✓</span>
+                        <span>Kidney Health History Tracking</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Section - Login Form -->
+            <div class="auth-right">
+                <div class="form-container">
+                    <h2>Welcome Back</h2>
+                    <p class="form-subtitle">Sign in to your account</p>
+
+                    <form id="loginForm" class="auth-form">
+                        <div class="form-group">
+                            <label for="email">Email Address</label>
+                            <input type="email" id="email" name="email" placeholder="you@example.com" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="password">Password</label>
+                            <input type="password" id="password" name="password" placeholder="••••••••" required>
+                        </div>
+
+                        <div class="form-options">
+                            <label class="remember-me">
+                                <input type="checkbox" name="remember">
+                                Remember me
+                            </label>
+                            <a href="#" class="forgot-password">Forgot Password?</a>
+                        </div>
+
+                        <button type="submit" class="btn-login">Sign In</button>
+                    </form>
+
+                    <div class="divider">OR</div>
+
+                    
+                    <p class="signup-link">
+                        Don't have an account? <a href="signup.html">Create one</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+
+
+    <script src="js/auth.js"></script>
+    <script>
+        // Redirect to home if already logged in
+        function checkAuthAndRedirect() {
+            console.log('🔍 Checking authentication...');
+            console.log('Current user:', authManager.currentUser);
+            console.log('Is logged in:', authManager.isLoggedIn());
+            
+            if (authManager.isLoggedIn()) {
+                console.log('✅ User is logged in, redirecting to home');
+                window.location.href = 'index.html';
+                return;
+            }
+            console.log('✅ User is not logged in, showing login page');
+        }
+        
+        // Check auth when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', checkAuthAndRedirect);
+        } else {
+            checkAuthAndRedirect();
+        }
+    </script>
+</body>
+</html>

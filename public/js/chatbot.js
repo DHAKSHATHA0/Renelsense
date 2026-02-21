@@ -1,446 +1,348 @@
-// Smart Kidney Monitoring Chatbot
-// Uses AI API to generate personalized health tips based on patient results
+// Real-Time Kidney Health Chatbot
+// Keyword-based responses - No API calls
 
-let patientResults = null;
-let conversationHistory = [];
-let isLoading = false;
-
-// Initialize chatbot on page load
-document.addEventListener('DOMContentLoaded', async function() {
-    console.log('Chatbot initialized');
-    
-    // Load patient results from sessionStorage or result page
-    loadPatientResults();
-    
-    // Initialize WebSocket for real-time updates
-    initializeWebSocket();
-    
-    // Display suggested prompts if first message
-    if (conversationHistory.length === 0) {
-        const suggestedPromptsEl = document.getElementById('suggestedPrompts');
-        if (suggestedPromptsEl) {
-            suggestedPromptsEl.style.display = 'grid';
-        }
-    }
-    
-    // Set focus on input
-    const chatInput = document.getElementById('chatInput');
-    if (chatInput) {
-        chatInput.focus();
-    }
-});
-
-/**
- * Load patient results from sessionStorage or localStorage
- */
-function loadPatientResults() {
-    // Try to get from sessionStorage first (most recent)
-    let results = sessionStorage.getItem('patientResults');
-    
-    // If not found, try localStorage
-    if (!results) {
-        results = localStorage.getItem('patientResults');
-    }
-    
-    if (results) {
-        patientResults = JSON.parse(results);
-        updatePatientInfoDisplay();
-        console.log('Patient results loaded:', patientResults);
-    } else {
-        // Use default/mock data if no results found
-        patientResults = {
-            eGFR: 78,
-            status: 'Normal Function',
-            riskLevel: 'Low',
-            confidence: 94,
-            heartRate: 72,
-            temperature: 36.8,
-            dataQuality: 98
-        };
-        console.log('Using default patient results:', patientResults);
-    }
-}
-
-/**
- * Update patient info display in chatbot header
- */
-function updatePatientInfoDisplay() {
-    if (patientResults) {
-        const eGFREl = document.getElementById('patientEGFR');
-        const statusEl = document.getElementById('patientStatus');
-        const riskEl = document.getElementById('patientRisk');
-        const confidenceEl = document.getElementById('patientConfidence');
+class KidneyHealthChatbot {
+    constructor() {
+        this.conversationHistory = [];
+        this.isWaitingForResponse = false;
+        this.messageElements = new Map();
         
-        if (eGFREl) eGFREl.textContent = `${patientResults.eGFR || '--'}`;
-        if (statusEl) statusEl.textContent = patientResults.status || '--';
-        if (riskEl) riskEl.textContent = patientResults.riskLevel || '--';
-        if (confidenceEl) confidenceEl.textContent = `${patientResults.confidence || '--'}%`;
+        this.initializeElements();
+        this.setupEventListeners();
+        this.loadConversationHistory();
+        this.checkForInitialQuestion();
     }
-}
 
-/**
- * Send message to chatbot
- */
-function sendMessage(customMessage = null) {
-    const input = document.getElementById('chatInput');
-    const message = customMessage || input.value.trim();
-    
-    if (!message) return;
-    
-    // Clear input if not custom message
-    if (!customMessage) {
-        input.value = '';
+    initializeElements() {
+        this.chatMessages = document.getElementById('chatMessages');
+        this.messageInput = document.getElementById('messageInput');
+        this.sendBtn = document.getElementById('sendBtn');
+        this.clearBtn = document.getElementById('clearBtn');
     }
-    
-    // Hide suggested prompts after first message
-    const suggestedPromptsEl = document.getElementById('suggestedPrompts');
-    if (suggestedPromptsEl) {
-        suggestedPromptsEl.style.display = 'none';
-    }
-    
-    // Add user message to chat
-    addMessageToChat(message, 'user');
-    
-    // Add to conversation history
-    conversationHistory.push({
-        role: 'user',
-        content: message
-    });
-    
-    // Disable send button
-    const sendBtn = document.getElementById('sendBtn');
-    if (sendBtn) {
-        sendBtn.disabled = true;
-    }
-    isLoading = true;
-    
-    // Show typing indicator
-    showTypingIndicator();
-    
-    // Send to backend API
-    sendToAI(message);
-}
 
-/**
- * Add message to chat display
- */
-function addMessageToChat(message, role) {
-    const chatBody = document.getElementById('chatBody');
-    if (!chatBody) return;
-    
-    // Remove "no messages" placeholder if exists
-    const noMessages = chatBody.querySelector('.no-messages');
-    if (noMessages) {
-        noMessages.remove();
-    }
-    
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `message ${role}`;
-    
-    const avatar = document.createElement('div');
-    avatar.className = 'message-avatar';
-    avatar.innerHTML = role === 'user' ? '<i class="fas fa-user"></i>' : '<i class="fas fa-robot"></i>';
-    
-    const content = document.createElement('div');
-    content.className = 'message-content';
-    content.innerHTML = sanitizeHTML(message);
-    
-    messageDiv.appendChild(avatar);
-    messageDiv.appendChild(content);
-    
-    chatBody.appendChild(messageDiv);
-    
-    // Scroll to bottom
-    chatBody.scrollTop = chatBody.scrollHeight;
-}
+    setupEventListeners() {
+        // Send message on button click
+        this.sendBtn.addEventListener('click', () => this.sendMessage());
 
-/**
- * Show typing indicator
- */
-function showTypingIndicator() {
-    const chatBody = document.getElementById('chatBody');
-    if (!chatBody) return;
-    
-    const messageDiv = document.createElement('div');
-    messageDiv.className = 'message bot';
-    messageDiv.id = 'typingIndicator';
-    
-    const avatar = document.createElement('div');
-    avatar.className = 'message-avatar';
-    avatar.innerHTML = '<i class="fas fa-robot"></i>';
-    
-    const content = document.createElement('div');
-    content.className = 'typing-indicator';
-    content.innerHTML = '<span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>';
-    
-    messageDiv.appendChild(avatar);
-    messageDiv.appendChild(content);
-    
-    chatBody.appendChild(messageDiv);
-    
-    // Scroll to bottom
-    chatBody.scrollTop = chatBody.scrollHeight;
-}
-
-/**
- * Remove typing indicator
- */
-function removeTypingIndicator() {
-    const indicator = document.getElementById('typingIndicator');
-    if (indicator) {
-        indicator.remove();
-    }
-}
-
-/**
- * Send message to AI API
- */
-async function sendToAI(message) {
-    try {
-        const serverURL = getServerURL();
-        const response = await fetch(`${serverURL}/api/chatbot`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                message: message,
-                patientResults: patientResults,
-                conversationHistory: conversationHistory,
-                sessionId: getSessionId()
-            })
-        });
-        
-        if (!response.ok) {
-            throw new Error(`API error: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        // Remove typing indicator
-        removeTypingIndicator();
-        
-        if (data.success && data.reply) {
-            // Add bot response to chat
-            addMessageToChat(data.reply, 'bot');
-            
-            // Add to conversation history
-            conversationHistory.push({
-                role: 'assistant',
-                content: data.reply
-            });
-        } else {
-            addMessageToChat('Sorry, I could not generate a response. Please try again.', 'bot');
-        }
-        
-        // Re-enable send button
-        const sendBtn = document.getElementById('sendBtn');
-        if (sendBtn) {
-            sendBtn.disabled = false;
-        }
-        isLoading = false;
-        
-    } catch (error) {
-        console.error('Error sending message to AI:', error);
-        removeTypingIndicator();
-        addMessageToChat('Sorry, there was an error processing your request. Please try again later.', 'bot');
-        
-        // Re-enable send button
-        const sendBtn = document.getElementById('sendBtn');
-        if (sendBtn) {
-            sendBtn.disabled = false;
-        }
-        isLoading = false;
-    }
-}
-
-/**
- * Get server URL
- */
-function getServerURL() {
-    try {
-        // Try to get from config
-        const protocol = window.location.protocol;
-        const hostname = window.location.hostname;
-        const port = window.location.port || (protocol === 'https:' ? 443 : 80);
-        
-        // Use current server
-        if (port) {
-            return `${protocol}//${hostname}:${port}`;
-        }
-        return `${protocol}//${hostname}`;
-    } catch (error) {
-        return 'http://localhost:3000';
-    }
-}
-
-/**
- * Get or create session ID
- */
-function getSessionId() {
-    let sessionId = sessionStorage.getItem('sessionId');
-    if (!sessionId) {
-        sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-        sessionStorage.setItem('sessionId', sessionId);
-    }
-    return sessionId;
-}
-
-/**
- * Sanitize HTML to prevent XSS
- */
-function sanitizeHTML(html) {
-    // Support markdown-style formatting
-    let sanitized = html;
-    
-    // Bold: **text** -> <strong>text</strong>
-    sanitized = sanitized.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-    
-    // Italic: *text* -> <em>text</em>
-    sanitized = sanitized.replace(/\*(.*?)\*/g, '<em>$1</em>');
-    
-    // Newlines: \n -> <br>
-    sanitized = sanitized.replace(/\n/g, '<br>');
-    
-    // Lists: - item -> <li>item</li>
-    sanitized = sanitized.replace(/^- (.*?)$/gm, '<li>$1</li>');
-    
-    return sanitized;
-}
-
-/**
- * Store patient results when coming from result page
- */
-function storePatientResults(results) {
-    sessionStorage.setItem('patientResults', JSON.stringify(results));
-    loadPatientResults();
-}
-
-/**
- * Initialize WebSocket connection for real-time updates
- */
-function initializeWebSocket() {
-    try {
-        // Determine WebSocket protocol and host
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const host = window.location.host;
-        const wsURL = `${protocol}//${host}`;
-        
-        console.log('🔗 Connecting to WebSocket:', wsURL);
-        
-        const ws = new WebSocket(wsURL);
-        
-        ws.addEventListener('open', () => {
-            console.log('✅ WebSocket connected');
-            addSystemMessage('🔗 Connected to real-time updates');
-        });
-        
-        ws.addEventListener('message', (event) => {
-            try {
-                const message = JSON.parse(event.data);
-                console.log('📨 Received WebSocket message:', message);
-                
-                // Handle different message types
-                switch(message.type) {
-                    case 'sensor_update':
-                        handleSensorUpdate(message.payload);
-                        break;
-                    case 'prediction_result':
-                        handlePredictionResult(message.payload);
-                        break;
-                    case 'test_started':
-                        addSystemMessage('🏥 New test session started');
-                        break;
-                    case 'test_stopped':
-                        addSystemMessage('⏹️ Test session ended');
-                        break;
-                    default:
-                        console.log('Unknown message type:', message.type);
-                }
-            } catch (error) {
-                console.error('Error parsing WebSocket message:', error);
+        // Send message on Enter key
+        this.messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey && !this.isWaitingForResponse) {
+                e.preventDefault();
+                this.sendMessage();
             }
         });
+
+        // Clear conversation
+        this.clearBtn.addEventListener('click', () => this.clearConversation());
+
+        // Auto-focus input
+        this.messageInput.focus();
+    }
+
+    // Check for initial question from URL parameter
+    checkForInitialQuestion() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const topic = urlParams.get('topic');
         
-        ws.addEventListener('error', (error) => {
-            console.error('❌ WebSocket error:', error);
-            addSystemMessage('⚠️ Connection error - real-time updates may be unavailable');
+        if (topic) {
+            // Set the input field and send the message automatically
+            setTimeout(() => {
+                this.messageInput.value = topic;
+                this.sendMessage();
+            }, 500);
+        }
+    }
+
+    async sendMessage() {
+        const message = this.messageInput.value.trim();
+
+        if (!message) {
+            this.showNotification('Please enter a message', 'error');
+            return;
+        }
+
+        if (this.isWaitingForResponse) {
+            this.showNotification('Waiting for response... please wait', 'error');
+            return;
+        }
+
+        // Clear input
+        this.messageInput.value = '';
+        this.messageInput.focus();
+
+        // Add user message to chat
+        this.displayUserMessage(message);
+
+        // Add to history
+        this.conversationHistory.push({
+            role: 'user',
+            message: message,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         });
-        
-        ws.addEventListener('close', () => {
-            console.log('❌ WebSocket closed');
-            addSystemMessage('🔌 Connection closed');
+
+        // Show typing indicator
+        this.showTypingIndicator();
+
+        // Get AI response
+        try {
+            this.isWaitingForResponse = true;
+            this.sendBtn.disabled = true;
+
+            const response = await this.getAIResponse(message);
+
+            // Remove typing indicator
+            this.removeTypingIndicator();
+
+            // Display AI response
+            this.displayBotMessage(response);
+
+            // Add to history
+            this.conversationHistory.push({
+                role: 'bot',
+                message: response,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            });
+
+            // Save conversation
+            this.saveConversationHistory();
+
+        } catch (error) {
+            this.removeTypingIndicator();
+            console.error('Error getting response:', error);
+            
+            // Show error message
+            const errorMessage = error.message || 'Failed to get response from AI. Please try again.';
+            this.displayBotMessage(`❌ Error: ${errorMessage}`);
+
+            // Still add to history for reference
+            this.conversationHistory.push({
+                role: 'bot',
+                message: `Error: ${errorMessage}`,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            });
+
+        } finally {
+            this.isWaitingForResponse = false;
+            this.sendBtn.disabled = false;
+            this.messageInput.focus();
+        }
+    }
+
+    async getAIResponse(userMessage) {
+        // Simulate API call delay for natural feel, but use keyword-based responses
+        return new Promise((resolve) => {
+            setTimeout(() => {
+                const response = this.generateKeywordResponse(userMessage);
+                resolve(response);
+            }, 600);
         });
+    }
+
+    generateKeywordResponse(userMessage) {
+        const message = userMessage.toLowerCase();
+
+        // Kidney disease keywords
+        if (message.includes('kidney') || message.includes('renal')) {
+            if (message.includes('disease') || message.includes('disorder')) {
+                return 'Chronic Kidney Disease (CKD) is a condition where the kidneys gradually lose their ability to filter waste from the blood. It progresses in stages 1-5, with stage 5 being kidney failure. Common causes include diabetes, high blood pressure, and inflammation of kidney filters (glomerulonephritis).';
+            }
+            if (message.includes('test') || message.includes('results')) {
+                return 'Kidney function tests measure how well your kidneys work:\n• Creatinine: Measures waste from muscle metabolism\n• BUN (Blood Urea Nitrogen): Measures waste from protein breakdown\n• eGFR (Estimated Glomerular Filtration Rate): Shows kidney function percentage\n• Urinalysis: Checks for protein and other substances in urine';
+            }
+            if (message.includes('function') || message.includes('how')) {
+                return 'Your kidneys filter waste and excess water from your blood to make urine. They also regulate:\n• Blood pressure through fluid balance\n• Red blood cell production\n• Calcium and phosphorus levels\n• Blood pH and electrolyte balance\nAbout 150 liters of blood are filtered daily, producing 1-2 liters of urine.';
+            }
+        }
+
+        // Health and diet keywords
+        if (message.includes('diet') || message.includes('food') || message.includes('eat')) {
+            return 'For kidney health, consider:\n• Limiting sodium to less than 2,300mg daily\n• Controlling protein intake if in advanced CKD\n• Limiting phosphorus and potassium if advised\n• Staying hydrated with appropriate fluid intake\n• Choosing whole grains and fresh vegetables\nAlways consult your doctor for personalized advice.';
+        }
+
+        if (message.includes('exercise') || message.includes('activity') || message.includes('physical')) {
+            return 'Regular exercise supports kidney health:\n• Aim for 150 minutes of moderate activity weekly\n• Walking, swimming, and cycling are good options\n• Strength training 2-3 times per week helps maintain muscle\n• Start slowly and gradually increase intensity\n• Always check with your doctor before starting exercise.';
+        }
+
+        // Symptoms keywords
+        if (message.includes('symptom') || message.includes('sign') || message.includes('feel')) {
+            if (message.includes('blood') || message.includes('pressure')) {
+                return 'High blood pressure can damage kidneys and is both a cause and consequence of kidney disease. Blood pressure should ideally be less than 120/80 mmHg. People with CKD often need BP below 130/80 mmHg. Regular monitoring is essential.';
+            }
+            return 'Early kidney disease often has no symptoms. As it progresses, watch for:\n• Fatigue and weakness\n• Swelling in legs, ankles, or face\n• Changes in urination (frequency, color, foam)\n• Loss of appetite\n• Nausea and vomiting\n• Difficulty concentrating\nIf you experience these, contact your healthcare provider.';
+        }
+
+        // Test result interpretation
+        if (message.includes('egfr') || message.includes('glomerular')) {
+            return 'eGFR (Estimated Glomerular Filtration Rate) shows kidney function level:\n• 90+: Normal kidney function\n• 60-89: Mild decrease in kidney function\n• 30-59: Moderate decrease (CKD Stage 3)\n• 15-29: Severe decrease (CKD Stage 4)\n• <15: Kidney failure (CKD Stage 5)\nYour doctor interprets results along with symptoms.';
+        }
+
+        if (message.includes('creatinine')) {
+            return 'Creatinine is a waste product from muscle metabolism filtered by the kidneys.\n• Normal range: 0.6-1.2 mg/dL for men\n• Normal range: 0.5-1.1 mg/dL for women\n• Higher levels suggest reduced kidney function\n• Works with eGFR for accurate assessment\nYour doctor considers creatinine along with other tests.';
+        }
+
+        // General health questions
+        if (message.includes('diabetes')) {
+            return 'Diabetes is a leading cause of kidney disease. High blood sugar damages blood vessels in kidneys over time. Managing diabetes is crucial:\n• Keep blood sugar within target range\n• Take medications as prescribed\n• Monitor blood pressure\n• Get regular kidney function tests\n• Maintain healthy diet and exercise\nEarly detection and management can slow kidney damage significantly.';
+        }
+
+        if (message.includes('prevent') || message.includes('prevention')) {
+            return 'To prevent kidney disease:\n• Control blood sugar if diabetic\n• Manage blood pressure (<130/80 mmHg)\n• Maintain healthy weight\n• Don\'t smoke or use tobacco\n• Limit alcohol consumption\n• Reduce sodium intake\n• Exercise regularly\n• Avoid overuse of pain relievers\n• Get regular kidney screening if at risk';
+        }
+
+        // Default response
+        return 'I\'m here to help with kidney health questions. You can ask me about:\n• Kidney function and disease\n• Understanding test results\n• Lifestyle and diet recommendations\n• Symptoms and prevention\n• Managing chronic kidney disease\n\nWhat would you like to know?';
+
+    displayUserMessage(message) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message user';
+        messageDiv.innerHTML = `
+            <div class="message-content">${this.escapeHtml(message)}</div>
+            <div class="avatar"><i class="fas fa-user"></i></div>
+        `;
+
+        // Remove welcome message if it exists
+        this.removeWelcomeMessage();
+
+        this.chatMessages.appendChild(messageDiv);
+        this.scrollToBottom();
+    }
+
+    displayBotMessage(message) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message bot';
+
+        // Format the message with proper line breaks and preserve structure
+        const formattedMessage = message
+            .replace(/\n\n/g, '</p><p>')
+            .replace(/\n/g, '<br>')
+            .replace(/^/, '<p>')
+            .replace(/$/, '</p>');
+
+        messageDiv.innerHTML = `
+            <div class="avatar"><i class="fas fa-robot"></i></div>
+            <div class="message-content">${formattedMessage}</div>
+        `;
+
+        this.chatMessages.appendChild(messageDiv);
+        this.scrollToBottom();
+    }
+
+    showTypingIndicator() {
+        const typingDiv = document.createElement('div');
+        typingDiv.className = 'message bot';
+        typingDiv.id = 'typing-indicator';
+        typingDiv.innerHTML = `
+            <div class="avatar"><i class="fas fa-robot"></i></div>
+            <div class="typing-indicator">
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            </div>
+        `;
+
+        this.chatMessages.appendChild(typingDiv);
+        this.scrollToBottom();
+    }
+
+    removeTypingIndicator() {
+        const typingIndicator = document.getElementById('typing-indicator');
+        if (typingIndicator) {
+            typingIndicator.remove();
+        }
+    }
+
+    removeWelcomeMessage() {
+        const welcomeMessage = this.chatMessages.querySelector('.welcome-message');
+        if (welcomeMessage) {
+            welcomeMessage.remove();
+        }
+    }
+
+    clearConversation() {
+        if (this.conversationHistory.length === 0) {
+            this.showNotification('No conversation to clear', 'error');
+            return;
+        }
+
+        if (confirm('Are you sure you want to clear the conversation? This cannot be undone.')) {
+            this.conversationHistory = [];
+            this.chatMessages.innerHTML = `
+                <div class="welcome-message">
+                    <h2>🤖 Kidney Health Assistant</h2>
+                    <p>Powered by Google Gemini AI</p>
+                    <p style="margin-top: 20px; color: #666; font-size: 14px;">
+                        Ask me anything about kidney health, kidney stones, kidney disease, eGFR, and medical care advice.
+                    </p>
+                </div>
+            `;
+            this.messageInput.value = '';
+            this.messageInput.focus();
+            localStorage.removeItem('chatbotHistory');
+            this.showNotification('Conversation cleared', 'success');
+        }
+    }
+
+    saveConversationHistory() {
+        try {
+            localStorage.setItem('chatbotHistory', JSON.stringify(this.conversationHistory));
+        } catch (error) {
+            console.error('Error saving conversation:', error);
+        }
+    }
+
+    loadConversationHistory() {
+        try {
+            const saved = localStorage.getItem('chatbotHistory');
+            if (saved) {
+                this.conversationHistory = JSON.parse(saved);
+                
+                // Display saved conversation
+                if (this.conversationHistory.length > 0) {
+                    this.removeWelcomeMessage();
+                    this.conversationHistory.forEach(item => {
+                        if (item.role === 'user') {
+                            this.displayUserMessage(item.message);
+                        } else {
+                            this.displayBotMessage(item.message);
+                        }
+                    });
+                }
+            }
+        } catch (error) {
+            console.error('Error loading conversation history:', error);
+        }
+    }
+
+    scrollToBottom() {
+        setTimeout(() => {
+            this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
+        }, 0);
+    }
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    showNotification(message, type = 'info') {
+        // Show notification in input placeholder temporarily
+        const original = this.messageInput.placeholder;
+        this.messageInput.placeholder = message;
         
-        return ws;
-    } catch (error) {
-        console.error('Error initializing WebSocket:', error);
-        return null;
+        setTimeout(() => {
+            this.messageInput.placeholder = original;
+        }, 3000);
     }
 }
 
-/**
- * Handle sensor data updates from WebSocket
- */
-function handleSensorUpdate(sensorData) {
-    console.log('📊 Sensor update received:', sensorData);
-    addSystemMessage('📊 New sensor data received from device');
-}
-
-/**
- * Handle ML prediction results from WebSocket
- */
-function handlePredictionResult(predictionData) {
-    console.log('🤖 Prediction result received:', predictionData);
+// Initialize chatbot when page loads
+document.addEventListener('DOMContentLoaded', () => {
+    const chatbot = new KidneyHealthChatbot();
     
-    if (predictionData.success && predictionData.prediction) {
-        const prediction = predictionData.prediction;
-        
-        // Update patient results
-        patientResults = {
-            eGFR: prediction.egfr,
-            status: prediction.kidney_status,
-            riskLevel: prediction.risk_level,
-            confidence: prediction.confidence_score,
-            heartRate: patientResults?.heartRate || '--',
-            temperature: patientResults?.temperature || '--',
-            dataQuality: patientResults?.dataQuality || '--'
-        };
-        
-        // Update display
-        updatePatientInfoDisplay();
-        
-        // Save to storage
-        sessionStorage.setItem('patientResults', JSON.stringify(patientResults));
-        
-        // Show result message
-        const resultMsg = `✅ **Analysis Complete!**
-        
-**Results:**
-- **eGFR:** ${prediction.egfr} mL/min/1.73m²
-- **Status:** ${prediction.kidney_status}
-- **Risk Level:** ${prediction.risk_level}
-- **Confidence:** ${prediction.confidence_score}%
-
-${prediction.confidence_score >= 85 ? '🎯 High confidence in results' : '⚠️ Please verify with healthcare provider'}`;
-        
-        addSystemMessage(resultMsg);
-    } else if (predictionData.error) {
-        addSystemMessage(`❌ Prediction error: ${predictionData.error}`);
-    }
-}
-
-/**
- * Add system message to chat
- */
-function addSystemMessage(message) {
-    const chatBody = document.getElementById('chatBody');
-    if (!chatBody) return;
+    // Make it globally accessible for debugging
+    window.chatbot = chatbot;
     
-    const messageDiv = document.createElement('div');
-    messageDiv.className = 'message system';
-    messageDiv.innerHTML = `<div class="message-content">${sanitizeHTML(message)}</div>`;
-    
-    chatBody.appendChild(messageDiv);
-    chatBody.scrollTop = chatBody.scrollHeight;
-}
+    console.log('✅ Kidney Health Chatbot initialized');
+    console.log('Ready to answer questions about kidney health using Google Gemini AI');
+});

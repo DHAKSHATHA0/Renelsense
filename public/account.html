@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Account - Kidney Disorder Health Guide</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Header Section -->
+    <header class="main-header">
+        <div class="container header-container">
+            <div class="logo-wrapper">
+                <div class="logo-icon">
+                    <img src="images/logo.jpeg" alt="Renal Sense Logo">
+                </div>
+                <h1 class="project-name">Renal Sense</h1>
+            </div>
+            <nav class="main-nav">
+                <ul>
+                    <li><a href="index.html" class="nav-link">Home</a></li>
+                    <li><a href="chatbot.html" class="nav-link">AI Assistant</a></li>
+                    <li><a href="live-test.html" class="nav-link">Live Test</a></li>
+                    <li><a href="result.html" class="nav-link">Results</a></li>
+                    <li><a href="report.html" class="nav-link">Report</a></li>
+                    <li><a href="account.html" class="nav-link active">My Account</a></li>
+                    <li><a href="javascript:logout()" class="nav-link logout">Logout</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <!-- My Account Section -->
+    <section class="account-section">
+        <div class="container">
+            <div class="account-container">
+                <!-- Account Header -->
+                <div class="account-header">
+                    <div class="account-avatar">
+                        <i class="fas fa-user-circle"></i>
+                    </div>
+                    <div class="account-info">
+                        <h2 id="userFullName">Loading...</h2>
+                        <p id="userEmail" class="user-email">--</p>
+                    </div>
+                </div>
+
+                <!-- Account Details Tabs -->
+                <div class="account-tabs">
+                    <button class="tab-btn active" data-tab="personal">Personal Info</button>
+                    <button class="tab-btn" data-tab="medical">Medical Details</button>
+                    <button class="tab-btn" data-tab="preferences">Preferences</button>
+                </div>
+
+                <!-- Personal Information Tab -->
+                <div class="tab-content active" id="personal-tab">
+                    <div class="info-box">
+                        <h3>Personal Information</h3>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <label>First Name</label>
+                                <p id="userFirstName">--</p>
+                            </div>
+                            <div class="info-item">
+                                <label>Last Name</label>
+                                <p id="userLastName">--</p>
+                            </div>
+                            <div class="info-item">
+                                <label>Email Address</label>
+                                <p id="userEmailFull">--</p>
+                            </div>
+                            <div class="info-item">
+                                <label>Phone Number</label>
+                                <p id="userPhone">--</p>
+                            </div>
+                            <div class="info-item">
+                                <label>Member Since</label>
+                                <p id="userCreatedAt">--</p>
+                            </div>
+                            <div class="info-item">
+                                <label>User ID</label>
+                                <p id="userId" class="font-mono">--</p>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" onclick="editPersonalInfo()">
+                            <i class="fas fa-edit"></i> Edit Information
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Medical Information Tab -->
+                <div class="tab-content" id="medical-tab">
+                    <div class="info-box">
+                        <h3>Medical Profile</h3>
+                        <div class="medical-info-grid">
+                            <div class="medical-card">
+                                <div class="card-icon">
+                                    <i class="fas fa-heartbeat"></i>
+                                </div>
+                                <div class="card-content">
+                                    <label>Total Tests Completed</label>
+                                    <p id="totalTests" class="card-value">0</p>
+                                </div>
+                            </div>
+                            <div class="medical-card">
+                                <div class="card-icon">
+                                    <i class="fas fa-flask"></i>
+                                </div>
+                                <div class="card-content">
+                                    <label>Latest eGFR</label>
+                                    <p id="latestEGFR" class="card-value">--</p>
+                                </div>
+                            </div>
+                            <div class="medical-card">
+                                <div class="card-icon">
+                                    <i class="fas fa-alert-triangle"></i>
+                                </div>
+                                <div class="card-content">
+                                    <label>Health Alerts</label>
+                                    <p id="totalAlerts" class="card-value">0</p>
+                                </div>
+                            </div>
+                            <div class="medical-card">
+                                <div class="card-icon">
+                                    <i class="fas fa-calendar"></i>
+                                </div>
+                                <div class="card-content">
+                                    <label>Last Test Date</label>
+                                    <p id="lastTestDate" class="card-value">--</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Recent Tests -->
+                        <div class="recent-tests">
+                            <h4>Recent Test Results</h4>
+                            <div id="recentTestsList" class="tests-list">
+                                <p class="loading-text">Loading test history...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Preferences Tab -->
+                <div class="tab-content" id="preferences-tab">
+                    <div class="info-box">
+                        <h3>Account Preferences</h3>
+                        <div class="preferences-list">
+                            <div class="preference-item">
+                                <label>
+                                    <input type="checkbox" checked> Email Notifications
+                                </label>
+                                <p class="preference-desc">Receive alerts for important health updates</p>
+                            </div>
+                            <div class="preference-item">
+                                <label>
+                                    <input type="checkbox" checked> Test Reminders
+                                </label>
+                                <p class="preference-desc">Get reminded to schedule regular tests</p>
+                            </div>
+                            <div class="preference-item">
+                                <label>
+                                    <input type="checkbox"> Marketing Emails
+                                </label>
+                                <p class="preference-desc">Receive news and updates about new features</p>
+                            </div>
+                        </div>
+
+                        <h3 style="margin-top: 2rem;">Danger Zone</h3>
+                        <div class="danger-zone">
+                            <button class="btn btn-secondary" onclick="changePassword()">
+                                <i class="fas fa-key"></i> Change Password
+                            </button>
+                            <button class="btn btn-danger" onclick="deleteAccount()">
+                                <i class="fas fa-trash"></i> Delete Account
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast"></div>
+
+    <script src="js/auth.js"></script>
+    <script src="js/config.js"></script>
+    <script>
+        // Check if user is logged in
+        checkAuth();
+
+        // Load user account information
+        async function loadAccountInfo() {
+            const user = authManager.getCurrentUser();
+            
+            if (!user) {
+                window.location.href = '/signup';
+                return;
+            }
+
+            // Display personal information
+            document.getElementById('userFullName').textContent = `${user.firstName} ${user.lastName}`;
+            document.getElementById('userEmail').textContent = user.email;
+            document.getElementById('userFirstName').textContent = user.firstName || '--';
+            document.getElementById('userLastName').textContent = user.lastName || '--';
+            document.getElementById('userEmailFull').textContent = user.email || '--';
+            document.getElementById('userPhone').textContent = user.phone || '--';
+            document.getElementById('userId').textContent = user.id || '--';
+            
+            // Format created date
+            if (user.createdAt) {
+                const date = new Date(user.createdAt);
+                document.getElementById('userCreatedAt').textContent = date.toLocaleDateString();
+            }
+
+            // Load medical information
+            await loadMedicalInfo(user.id);
+        }
+
+        // Load medical test information
+        async function loadMedicalInfo(userId) {
+            try {
+                const serverURL = typeof serverConfig !== 'undefined' ? serverConfig.getServerURL() : window.location.origin;
+                
+                // Fetch user tests
+                const testsResponse = await fetch(`${serverURL}/api/tests/user/${userId}`);
+                const testsData = await testsResponse.json();
+
+                if (testsData.success && testsData.tests) {
+                    const tests = testsData.tests;
+                    document.getElementById('totalTests').textContent = tests.length;
+
+                    // Get latest eGFR
+                    if (tests.length > 0) {
+                        const latestTest = tests[0];
+                        document.getElementById('latestEGFR').textContent = latestTest.eGFR || '--';
+                        document.getElementById('lastTestDate').textContent = new Date(latestTest.timestamp).toLocaleDateString();
+
+                        // Display recent tests
+                        displayRecentTests(tests.slice(0, 5));
+                    }
+                }
+
+                // Fetch alerts
+                const alertsResponse = await fetch(`${serverURL}/api/alerts/${userId}`);
+                const alertsData = await alertsResponse.json();
+
+                if (alertsData.success) {
+                    document.getElementById('totalAlerts').textContent = alertsData.count;
+                }
+            } catch (error) {
+                console.error('Error loading medical info:', error);
+            }
+        }
+
+        // Display recent tests
+        function displayRecentTests(tests) {
+            const testsList = document.getElementById('recentTestsList');
+            
+            if (tests.length === 0) {
+                testsList.innerHTML = '<p class="loading-text">No tests completed yet</p>';
+                return;
+            }
+
+            testsList.innerHTML = tests.map(test => `
+                <div class="test-item">
+                    <div class="test-date">${new Date(test.timestamp).toLocaleDateString()}</div>
+                    <div class="test-details">
+                        <p class="test-type">Test ID: ${test.testId}</p>
+                        <p class="test-egfr">eGFR: <strong>${test.eGFR}</strong> mL/min/1.73m²</p>
+                    </div>
+                    <div class="test-status">
+                        <span class="status-badge ${test.eGFR >= 90 ? 'status-normal' : test.eGFR >= 60 ? 'status-warning' : 'status-critical'}">
+                            ${test.eGFR >= 90 ? 'Normal' : test.eGFR >= 60 ? 'Abnormal' : 'Critical'}
+                        </span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Tab switching
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const tabName = this.getAttribute('data-tab');
+                
+                // Remove active class from all tabs and contents
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                
+                // Add active class to clicked tab
+                this.classList.add('active');
+                document.getElementById(`${tabName}-tab`).classList.add('active');
+            });
+        });
+
+        // Tab content CSS
+        const style = document.createElement('style');
+        style.textContent = `
+            .tab-content {
+                display: none;
+                animation: fadeIn 0.3s ease-in;
+            }
+            .tab-content.active {
+                display: block;
+            }
+            @keyframes fadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+            .txt-item {
+                padding: 1.5rem;
+                background: #f8f9fa;
+                border-radius: 10px;
+                margin-bottom: 1rem;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            .test-date {
+                font-weight: 600;
+                color: #2e7d32;
+            }
+            .status-badge {
+                padding: 0.4rem 0.8rem;
+                border-radius: 20px;
+                font-size: 0.85rem;
+                font-weight: 600;
+            }
+            .status-normal {
+                background: #e8f5e9;
+                color: #2e7d32;
+            }
+            .status-warning {
+                background: #fff3e0;
+                color: #f57c00;
+            }
+            .status-critical {
+                background: #ffebee;
+                color: #d32f2f;
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Functions
+        function editPersonalInfo() {
+            showToast('Edit functionality coming soon', 'info');
+        }
+
+        function changePassword() {
+            showToast('Password change functionality coming soon', 'info');
+        }
+
+        function deleteAccount() {
+            if (confirm('Are you sure? This action cannot be undone.')) {
+                showToast('Account deletion functionality coming soon', 'info');
+            }
+        }
+
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast');
+            if (toast) {
+                toast.textContent = message;
+                toast.className = `toast show ${type}`;
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                }, 3000);
+            }
+        }
+
+        // Load account info when page loads
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', loadAccountInfo);
+        } else {
+            loadAccountInfo();
+        }
+    </script>
+</body>
+</html>

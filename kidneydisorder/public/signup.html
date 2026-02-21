@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up - Kidney Disorder Health Guide</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/auth-style.css">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-wrapper">
+            <!-- Left Section - Branding -->
+            <div class="auth-left">
+                <div class="auth-branding">
+                    <h1>Renel Sense</h1>
+                    <p>Your Personal kidney Health Monitoring System</p>
+                </div>
+                <div class="auth-features">
+                    <div class="feature-item">
+                        <span class="feature-icon">✓</span>
+                        <span>Get Test Reports</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">✓</span>
+                        <span>AI Diagnosis Assistant</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">✓</span>
+                        <span>Kidney Health History Tracking</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Section - Signup Form -->
+            <div class="auth-right">
+                <div class="form-container">
+                    <h2>Create Account</h2>
+                    <p class="form-subtitle">Join us to track your Kidney health</p>
+
+                    <form id="signupForm" class="auth-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="firstName">First Name</label>
+                                <input type="text" id="firstName" name="firstName" placeholder="John" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="lastName">Last Name</label>
+                                <input type="text" id="lastName" name="lastName" placeholder="Doe" required>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="signupEmail">Email Address</label>
+                            <input type="email" id="signupEmail" name="email" placeholder="you@example.com" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="phone">Phone Number</label>
+                            <input type="tel" id="phone" name="phone" placeholder="+1 (555) 000-0000" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="signupPassword">Password</label>
+                            <input type="password" id="signupPassword" name="password" placeholder="••••••••" required>
+                            <small>At least 8 characters with uppercase, lowercase, and numbers</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="confirmPassword">Confirm Password</label>
+                            <input type="password" id="confirmPassword" name="confirmPassword" placeholder="••••••••" required>
+                        </div>
+
+                        <label class="terms-check">
+                            <input type="checkbox" name="terms" required>
+                            I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>
+                        </label>
+
+                        <button type="submit" class="btn-login">Create Account</button>
+                    </form>
+
+                    <div class="divider">OR</div>
+
+
+                    <p class="signup-link">
+                        Already have an account? <a href="login.html">Sign in</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // Initialize demo user if no users exist
+        (function() {
+            const users = JSON.parse(localStorage.getItem('users')) || [];
+            if (users.length === 0) {
+                const demoUser = {
+                    id: 1,
+                    firstName: 'Demo',
+                    lastName: 'User',
+                    email: 'demo@example.com',
+                    phone: '1234567890',
+                    password: btoa('Demo1234'), // Base64 encoded password
+                    createdAt: new Date().toISOString(),
+                    chatHistory: [],
+                    testResults: [],
+                    reports: []
+                };
+                localStorage.setItem('users', JSON.stringify([demoUser]));
+                console.log('Demo user created - Email: demo@example.com, Password: Demo1234');
+            }
+        })();
+    </script>
+
+    <script src="js/auth.js"></script>
+</body>
+</html>

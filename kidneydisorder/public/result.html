@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Analysis Result - Smart Kidney Monitor</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <!-- Header Section -->
+    <header class="main-header">
+        <div class="container header-container">
+            <div class="logo-wrapper">
+                <div class="logo-icon">
+                    <img src="images/logo.jpeg" alt="Renal Sense Logo">
+                </div>
+                <h1 class="project-name">Renal Sense   </h1>
+            </div>
+            <nav class="main-nav">
+                <ul>
+                    <li><a href="index.html" class="nav-link">Home</a></li>
+                    <li><a href="live-test.html" class="nav-link">Live Test</a></li>
+                    <li><a href="result.html" class="nav-link active">Results</a></li>
+                    <li><a href="report.html" class="nav-link">Report</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Result Header -->
+    <section class="result-header medical-gradient">
+        <div class="container">
+            <div class="result-badge">
+                <i class="fas fa-check-circle"></i>
+                <span>Analysis Complete</span>
+            </div>
+            <h1>Kidney Function Analysis</h1>
+            <p>Test ID: <strong id="testId">TEST-2024-001</strong> | <strong id="testTime">2024-12-22 14:35</strong></p>
+        </div>
+    </section>
+
+    <!-- Main Result Section -->
+    <section class="result-main">
+        <div class="container">
+            <div class="result-grid">
+                <!-- eGFR Card -->
+                <div class="result-card eGFR-card">
+                    <div class="card-header">
+                        <div class="card-title-wrapper">
+                            <i class="fas fa-flask"></i>
+                            <h2>eGFR Result</h2>
+                        </div>
+                        <p class="card-subtitle">mL/min/1.73m²</p>
+                    </div>
+                    <div class="eGFR-display">
+                        <div class="eGFR-value-wrapper">
+                            <div class="eGFR-value" id="eGFRValue">78</div>
+                            <div class="eGFR-label">mL/min</div>
+                        </div>
+                        <div class="eGFR-scale">
+                            <div class="scale-bar">
+                                <div class="scale-section normal-range"></div>
+                                <div class="scale-section risk-range"></div>
+                                <div class="scale-section ckd-range"></div>
+                            </div>
+                            <div class="scale-labels">
+                                <span>Normal</span>
+                                <span>Risk</span>
+                                <span>CKD</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="eGFR-interpretation" id="eGFRInterpretation">
+                        <p class="interpretation-text">Kidney function is <strong>normal</strong>.</p>
+                    </div>
+                </div>
+
+                <!-- Status Card -->
+                <div class="result-card status-card">
+                    <div class="card-header">
+                        <div class="card-title-wrapper">
+                            <i class="fas fa-heartbeat"></i>
+                            <h2>Health Status</h2>
+                        </div>
+                    </div>
+                    <div class="status-badge-large" id="healthStatus">
+                        <i class="fas fa-check-circle"></i>
+                        <span>Healthy</span>
+                    </div>
+                    <div class="status-details">
+                        <div class="detail-item">
+                            <span class="detail-label">
+                                <i class="fas fa-exclamation-circle"></i> Risk Level:
+                            </span>
+                            <span class="detail-value risk-low" id="riskLevel">Low</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">
+                                <i class="fas fa-chart-pie"></i> Confidence:
+                            </span>
+                            <span class="detail-value" id="confidence">94%</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">
+                                <i class="fas fa-layer-group"></i> Stage:
+                            </span>
+                            <span class="detail-value stage-normal" id="ckdStage">Normal Function</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Prediction Metrics -->
+                <div class="result-card metrics-card">
+                    <div class="card-header">
+                        <div class="card-title-wrapper">
+                            <i class="fas fa-chart-bar"></i>
+                            <h2>Key Metrics</h2>
+                        </div>
+                    </div>
+                    <div class="metrics-list">
+                        <div class="metric-row">
+                            <div class="metric-info">
+                                <i class="fas fa-heart"></i>
+                                <span class="metric-name">Heart Rate</span>
+                            </div>
+                            <span class="metric-value" id="resultHR">72 BPM</span>
+                        </div>
+                        <div class="metric-row">
+                            <div class="metric-info">
+                                <i class="fas fa-thermometer"></i>
+                                <span class="metric-name">Temperature</span>
+                            </div>
+                            <span class="metric-value" id="resultTemp">36.8°C</span>
+                        </div>
+                        <div class="metric-row">
+                            <div class="metric-info">
+                                <i class="fas fa-signal"></i>
+                                <span class="metric-name">Data Quality</span>
+                            </div>
+                            <span class="metric-value" id="dataQuality">98%</span>
+                        </div>
+                        <div class="metric-row">
+                            <div class="metric-info">
+                                <i class="fas fa-clock"></i>
+                                <span class="metric-name">Test Duration</span>
+                            </div>
+                            <span class="metric-value" id="testDuration">3 minutes</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- AI Assistant Link Section -->
+    <section class="ai-assistant-link-section">
+        <div class="container">
+            <div class="ai-assistant-card">
+                <div class="ai-icon">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <h2>Analyze Your Report with AI Assistance</h2>
+                <p>Get detailed insights about your kidney health results and personalized recommendations</p>
+                <a href="chatbot.html" class="btn btn-primary btn-large">
+                    <i class="fas fa-comments"></i> Go to AI Assistant
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Action Buttons -->
+    <section class="result-actions">
+        <div class="container">
+            <div class="action-buttons">
+                <button id="downloadResultBtn" class="btn btn-primary">
+                    <i class="fas fa-download"></i> Download Result
+                </button>
+                <a href="history.html" class="btn btn-primary">
+                    <i class="fas fa-history"></i> View History
+                </a>
+                <a href="live-test.html" class="btn btn-primary">
+                    <i class="fas fa-redo"></i> Run Another Test
+                </a>
+                <a href="index.html" class="btn btn-secondary">
+                    <i class="fas fa-home"></i> Back to Home
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <script src="js/auth.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/result.js"></script>
+</body>
+</html>

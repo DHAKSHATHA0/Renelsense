@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test History - Smart Kidney Monitor</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Header Section -->
+    <header class="main-header">
+        <div class="container header-container">
+            <div class="logo-wrapper">
+                <div class="logo-icon">
+                    <img src="images/logo.jpeg" alt="Renal Sense Logo">
+                </div>
+                <h1 class="project-name">Renal Sense</h1>
+            </div>
+            <nav class="main-nav">
+                <ul>
+                    <li><a href="index.html" class="nav-link">Home</a></li>
+                    <li><a href="live-test.html" class="nav-link">Live Test</a></li>
+                    <li><a href="history.html" class="nav-link active">History</a></li>
+                    <li><a href="ai-assistant.html" class="nav-link">AI Assistant</a></li>
+                    <li><a href="javascript:logout();" class="nav-link">Logout</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <!-- History Hero Section -->
+    <section class="history-hero">
+        <div class="container">
+            <div class="hero-content">
+                <h2><i class="fas fa-history"></i> Test History & Progress Tracking</h2>
+                <p>View all your kidney function tests and track your health progress over time</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- History Dashboard -->
+    <section class="history-section">
+        <div class="container">
+            <!-- Filter and Controls -->
+            <div class="history-controls">
+                <div class="filter-group">
+                    <input type="text" id="searchInput" class="search-box" placeholder="Search by test ID or date...">
+                    <select id="sortSelect" class="sort-select">
+                        <option value="newest">Newest First</option>
+                        <option value="oldest">Oldest First</option>
+                        <option value="eGFR-high">Best eGFR (Highest)</option>
+                        <option value="eGFR-low">Lowest eGFR</option>
+                    </select>
+                </div>
+                <div class="action-buttons-history">
+                    <button id="exportAllBtn" class="btn btn-primary">
+                        <i class="fas fa-download"></i> Export All Data
+                    </button>
+                    <button id="clearHistoryBtn" class="btn btn-danger-secondary">
+                        <i class="fas fa-trash"></i> Clear History
+                    </button>
+                </div>
+            </div>
+
+            <!-- Summary Cards -->
+            <div class="summary-cards">
+                <div class="summary-card">
+                    <div class="summary-icon">
+                        <i class="fas fa-microscope"></i>
+                    </div>
+                    <div class="summary-content">
+                        <div class="summary-label">Total Tests</div>
+                        <div class="summary-value" id="totalTests">0</div>
+                    </div>
+                </div>
+
+                <div class="summary-card">
+                    <div class="summary-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="summary-content">
+                        <div class="summary-label">Average eGFR</div>
+                        <div class="summary-value" id="avgEGFR">--</div>
+                    </div>
+                </div>
+
+                <div class="summary-card">
+                    <div class="summary-icon">
+                        <i class="fas fa-trending-up"></i>
+                    </div>
+                    <div class="summary-content">
+                        <div class="summary-label">Latest Status</div>
+                        <div class="summary-value" id="latestStatus">--</div>
+                    </div>
+                </div>
+
+                <div class="summary-card">
+                    <div class="summary-icon">
+                        <i class="fas fa-calendar"></i>
+                    </div>
+                    <div class="summary-content">
+                        <div class="summary-label">Last Test</div>
+                        <div class="summary-value" id="lastTestDate">--</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tests List -->
+            <div class="tests-list-container">
+                <h3 class="list-title">Your Test Results</h3>
+                <div id="testsList" class="tests-list">
+                    <div class="empty-state">
+                        <i class="fas fa-inbox"></i>
+                        <p>No test history yet</p>
+                        <a href="live-test.html" class="btn btn-primary">
+                            <i class="fas fa-play"></i> Start Your First Test
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Progress Chart Section -->
+    <section class="progress-chart-section">
+        <div class="container">
+            <h3><i class="fas fa-chart-area"></i> eGFR Progress Over Time</h3>
+            <div class="chart-container">
+                <canvas id="progressChart"></canvas>
+            </div>
+        </div>
+    </section>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/history.js"></script>
+</body>
+</html>

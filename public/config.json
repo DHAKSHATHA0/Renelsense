@@ -1,7 +1,7 @@
 {
-  "serverIP": "172.31.98.113",
-  "serverPort": 3000,
-  "mlApiIP": "172.31.98.113",
+  "serverIP": "172.31.98.254",
+  "serverPort": "3000",
+  "mlApiIP": "172.31.98.254",
   "mlApiPort": 5000,
-  "timestamp": "2025-12-28T03:39:43.623Z"
+  "timestamp": "2026-02-19T03:49:53.337Z"
 }

@@ -15,17 +15,17 @@
         <div class="container header-container">
             <div class="logo-wrapper">
                 <div class="logo-icon">
-                    <i class="fas fa-heartbeat"></i>
+                    <img src="images/logo.jpeg" alt="Renal Sense Logo">
                 </div>
                 <h1 class="project-name">Renal Sense</h1>
             </div>
             <nav class="main-nav">
                 <ul>
                     <li><a href="index.html" class="nav-link">Home</a></li>
+                    <li><a href="ai-assistant.html" class="nav-link">AI Assistant</a></li>
                     <li><a href="live-test.html" class="nav-link active">Live Test</a></li>
-                    <li><a href="result.html" class="nav-link">Result</a></li>
-                    <li><a href="history.html" class="nav-link">History</a></li>
-                    <li><a href="about.html" class="nav-link">About</a></li>
+                    <li><a href="result.html" class="nav-link">Results</a></li>
+                    <li><a href="report.html" class="nav-link">Report</a></li>
                 </ul>
             </nav>
         </div>
@@ -35,38 +35,48 @@
     <section class="live-test-hero">
         <div class="container">
             <div class="hero-content">
-                <h2>Real-Time Analysis in Progress</h2>
-                <p>Watch as our AI analyzes your kidney function in real-time</p>
+                <h2>Start your Kidney Health Test</h2>
+                <p>Enter patient information and start monitoring</p>
             </div>
 
-            <!-- Patient Demographics Input -->
-            <div class="demographics-input" id="demographicsInput">
-                <h3 style="margin-bottom: 20px; color: #333;">Patient Information</h3>
-                <div style="display: flex; gap: 30px; justify-content: center; align-items: center; flex-wrap: wrap;">
-                    <div style="display: flex; flex-direction: column; gap: 10px;">
-                        <label style="font-weight: 600; color: #555;">Gender:</label>
-                        <div style="display: flex; gap: 10px;">
-                            <button class="gender-btn" data-gender="male" onclick="selectGender('male')" style="padding: 10px 20px; border: 2px solid #ddd; background: white; border-radius: 8px; cursor: pointer; font-weight: 500;">
+            <!-- Patient Demographics Input Box -->
+            <div class="demographics-box">
+                <div class="box-header">
+                    <i class="fas fa-user-circle"></i>
+                    <h3>Patient Information</h3>
+                </div>
+                <div class="demographics-content">
+                    <div class="input-group">
+                        <label class="input-label">
+                            <span class="label-text">Gender</span>
+                        </label>
+                        <div class="gender-buttons">
+                            <button class="gender-btn" data-gender="male" onclick="selectGender('male')">
                                 <i class="fas fa-mars"></i> Male
                             </button>
-                            <button class="gender-btn" data-gender="female" onclick="selectGender('female')" style="padding: 10px 20px; border: 2px solid #ddd; background: white; border-radius: 8px; cursor: pointer; font-weight: 500;">
+                            <button class="gender-btn" data-gender="female" onclick="selectGender('female')">
                                 <i class="fas fa-venus"></i> Female
                             </button>
                         </div>
                     </div>
-                    <div style="display: flex; flex-direction: column; gap: 10px;">
-                        <label for="ageInput" style="font-weight: 600; color: #555;">Age:</label>
-                        <input type="number" id="ageInput" min="1" max="120" placeholder="Enter age" style="padding: 10px 15px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; width: 150px;">
+                    <div class="input-group">
+                        <label for="ageInput" class="input-label">
+                            <span class="label-text">Age</span>
+                        </label>
+                        <div class="input-wrapper">
+                            <input type="number" id="ageInput" min="1" max="120" placeholder="Enter age">
+                            <span class="input-unit">years</span>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <div class="test-controls">
-                <button id="startTestBtn" class="btn btn-primary" onclick="startTest()">
+                <button id="startTestBtn" class="btn btn-primary pulse-btn" onclick="startTest()">
                     <i class="fas fa-play"></i> Start Test
                 </button>
-                <button id="stopTestBtn" class="btn btn-secondary" onclick="stopTest()" style="display: none;">
-                    <i class="fas fa-stop"></i> Stop Test
+                <button id="stopTestBtn" class="btn btn-danger" onclick="stopTest()" style="display: none;">
+                    <i class="fas fa-stop-circle"></i> Stop Test
                 </button>
             </div>
         </div>
@@ -77,38 +87,44 @@
         <div class="container">
             <div class="status-cards">
                 <div class="status-card">
-                    <div class="status-header">
-                        <i class="fas fa-circle-notch"></i>
-                        <span>Test Status</span>
+                    <div class="status-icon">
+                        <i class="fas fa-pulse"></i>
                     </div>
-                    <div class="status-badge" id="statusBadge">
-                        <span id="statusText">Ready</span>
+                    <div class="status-content">
+                        <div class="status-header">
+                            <span>Test Status</span>
+                        </div>
+                        <div class="status-badge" id="statusBadge">
+                            <span id="statusText">Ready</span>
+                        </div>
                     </div>
                 </div>
 
                 <div class="status-card">
-                    <div class="status-header">
-                        <i class="fas fa-clock"></i>
-                        <span>Elapsed Time</span>
+                    <div class="status-icon">
+                        <i class="fas fa-hourglass-end"></i>
                     </div>
-                    <div class="status-value" id="elapsedTime">0:00</div>
+                    <div class="status-content">
+                        <div class="status-header">
+                            <span>Elapsed Time</span>
+                        </div>
+                        <div class="status-value" id="elapsedTime">0:00</div>
+                    </div>
                 </div>
 
                 <div class="status-card">
-                    <div class="status-header">
+                    <div class="status-icon">
                         <i class="fas fa-signal"></i>
-                        <span>Data Quality</span>
                     </div>
-                    <div class="status-value" id="dataQuality">--</div>
+                    <div class="status-content">
+                        <div class="status-header">
+                            <span>Data Quality</span>
+                        </div>
+                        <div class="status-value" id="dataQuality">--</div>
+                    </div>
                 </div>
 
-                <div class="status-card">
-                    <div class="status-header">
-                        <i class="fas fa-database"></i>
-                        <span>Packets Received</span>
-                    </div>
-                    <div class="status-value"><span id="packetsReceived">0</span>/<span id="totalPackets">180</span></div>
-                </div>
+                
             </div>
         </div>
     </section>
@@ -116,30 +132,28 @@
     <!-- Progress Indicator -->
     <section class="progress-section">
         <div class="container">
-            <div class="progress-header">
-                <h3>Test Progress</h3>
-                <span id="progressPercent" class="progress-percentage">0%</span>
+            <div class="progress-box">
+                <div class="progress-header">
+                    <div class="progress-title">
+                        <i class="fas fa-chart-line"></i>
+                        <h3>Test Progress</h3>
+                    </div>
+                    <span id="progressPercent" class="progress-percentage">0%</span>
+                </div>
+                <div class="progress-bar-large">
+                    <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                </div>
+                <div class="progress-meta">
+                    <span>Packets Received: <span id="packetsReceived">0</span>/180</span>
+                </div>
             </div>
-            <div class="progress-bar-large">
-                <div class="progress-fill" id="progressFill" style="width: 0%"></div>
-            </div>
+            
+            <!-- Progress Stages -->
             <div class="progress-stages">
-                <div class="stage">
-                    <i class="fas fa-circle-check"></i>
-                    <span>Calibration</span>
-                </div>
-                <div class="stage">
-                    <i class="fas fa-circle-check"></i>
-                    <span>Baseline</span>
-                </div>
-                <div class="stage active">
-                    <i class="fas fa-circle"></i>
-                    <span>Data Collection</span>
-                </div>
-                <div class="stage">
-                    <i class="fas fa-circle"></i>
-                    <span>Analysis</span>
-                </div>
+                <div class="stage"><i class="fas fa-circle-check"></i><span>Data Collection</span></div>
+                <div class="stage"><i class="fas fa-circle-check"></i><span>Validation</span></div>
+                <div class="stage"><i class="fas fa-circle-check"></i><span>Analysis</span></div>
+                <div class="stage"><i class="fas fa-circle-check"></i><span>Generation</span></div>
             </div>
         </div>
     </section>
@@ -147,32 +161,43 @@
     <!-- Real-Time Metrics Grid -->
     <section class="live-metrics">
         <div class="container">
-            <h3>Live Sensor Data</h3>
+            <div class="metrics-header">
+                <h3><i class="fas fa-wave-square"></i> Live Sensor Data</h3>
+            </div>
             <div class="metrics-grid">
                 <div class="metric-card-live">
+                    <div class="metric-icon">
+                        <i class="fas fa-heart"></i>
+                    </div>
                     <div class="metric-label">Heart Rate (ECG)</div>
                     <div class="metric-value-large" id="heartRate">--</div>
                     <div class="metric-unit">BPM</div>
                     <div class="metric-bar">
-                        <div class="metric-bar-fill" id="heartRateBar" style="width: 70%"></div>
+                        <div class="metric-bar-fill" id="heartRateBar" style="width: 0%"></div>
                     </div>
                 </div>
 
                 <div class="metric-card-live">
+                    <div class="metric-icon">
+                        <i class="fas fa-thermometer"></i>
+                    </div>
                     <div class="metric-label">Temperature</div>
                     <div class="metric-value-large" id="temperature">--</div>
                     <div class="metric-unit">°C</div>
                     <div class="metric-bar">
-                        <div class="metric-bar-fill" id="temperatureBar" style="width: 80%"></div>
+                        <div class="metric-bar-fill" id="temperatureBar" style="width: 0%"></div>
                     </div>
                 </div>
 
                 <div class="metric-card-live">
+                    <div class="metric-icon">
+                        <i class="fas fa-lungs"></i>
+                    </div>
                     <div class="metric-label">SpO2 (Oxygen)</div>
                     <div class="metric-value-large" id="spo2">--</div>
                     <div class="metric-unit">%</div>
                     <div class="metric-bar">
-                        <div class="metric-bar-fill" id="spo2Bar" style="width: 75%"></div>
+                        <div class="metric-bar-fill" id="spo2Bar" style="width: 0%"></div>
                     </div>
                 </div>
             </div>
@@ -182,7 +207,6 @@
     <!-- Live Graphs -->
     <section class="graphs-section">
         <div class="container">
-            <h3>Real-Time Data Visualization</h3>
             <div class="graphs-grid">
                 <div class="graph-card">
                     <h4>Heart Rate Trend</h4>
@@ -208,7 +232,24 @@
         </div>
     </section>
 
+    <script src="js/auth.js"></script>
     <script src="js/main.js"></script>
     <script src="js/live-test.js"></script>
+    <script>
+        // Protect page - redirect to login if not authenticated
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!authManager.isLoggedIn()) {
+                alert('Please login to take a test');
+                window.location.href = 'login.html';
+            }
+        });
+        
+        // Initialize the live test page when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initLiveTest);
+        } else {
+            initLiveTest();
+        }
+    </script>
 </body>
 </html>

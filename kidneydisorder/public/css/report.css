@@ -1,0 +1,531 @@
+/* ========================================
+   REPORT PAGE STYLES
+   ======================================== */
+
+:root {
+    /* Font Size System - Uniform across all pages */
+    --fs-h1: 2.8rem;        /* Main page headers */
+    --fs-h2: 2.2rem;        /* Section headers */
+    --fs-h3: 1.6rem;        /* Subsection headers */
+    --fs-h4: 1.3rem;        /* Minor headers */
+    --fs-h5: 1.1rem;        /* Card titles */
+    --fs-h6: 1rem;          /* Small titles */
+    --fs-body: 1rem;        /* Main body text */
+    --fs-body-sm: 0.95rem;  /* Regular body text */
+    --fs-label: 0.9rem;     /* Labels and small text */
+    --fs-caption: 0.85rem;  /* Captions and tiny text */
+    --fs-nav: 0.95rem;      /* Navigation links */
+    --fs-footer: 0.9rem;    /* Footer text */
+    
+    /* Font Weight System - Based on importance */
+    --fw-light: 300;
+    --fw-normal: 400;
+    --fw-medium: 500;
+    --fw-semibold: 600;
+    --fw-bold: 700;
+}
+
+.report-container {
+    min-height: calc(100vh - 80px);
+    background: linear-gradient(135deg, rgba(245, 249, 251, 0.5) 0%, rgba(232, 244, 248, 0.5) 100%);
+    padding: 40px 20px;
+}
+
+.report-wrapper {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+/* ========================================
+   REPORT HEADER
+   ======================================== */
+
+.report-header {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    margin-bottom: 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.report-header h1 {
+    font-size: 2rem;
+    color: #1a1a1a;
+    margin: 0;
+}
+
+.header-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.btn-primary,
+.btn-secondary {
+    padding: 12px 20px;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #ff8787 0%, #ff6b6b 100%);
+    color: white;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 135, 135, 0.3);
+}
+
+.btn-secondary {
+    background: white;
+    color: #ff8787;
+    border: 2px solid #ff8787;
+}
+
+.btn-secondary:hover {
+    background: #fff3f3;
+}
+
+/* ========================================
+   REPORT SECTIONS
+   ======================================== */
+
+.report-section {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.report-section h2 {
+    font-size: 1.5rem;
+    color: #1a1a1a;
+    margin-bottom: 24px;
+    border-bottom: 2px solid #ff8787;
+    padding-bottom: 12px;
+}
+
+.report-section h3 {
+    font-size: 1.1rem;
+    color: #1a1a1a;
+    margin-bottom: 12px;
+}
+
+/* ========================================
+   PATIENT INFORMATION
+   ======================================== */
+
+.patient-info .info-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.info-item label {
+    font-size: 0.9rem;
+    color: #999;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+}
+
+.info-item p {
+    font-size: 1.1rem;
+    color: #1a1a1a;
+    font-weight: 500;
+}
+
+/* ========================================
+   TEST RESULTS
+   ======================================== */
+
+.results-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+}
+
+.result-card {
+    background: linear-gradient(135deg, #fff5f5 0%, #fff9f9 100%);
+    border: 1px solid #ffe0e0;
+    border-radius: 10px;
+    padding: 20px;
+    transition: all 0.3s ease;
+}
+
+.result-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(255, 135, 135, 0.15);
+    border-color: #ff8787;
+}
+
+.result-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+
+.result-header h3 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.status {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status.normal {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status.warning {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.status.critical {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.result-value {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #ff8787;
+    margin-bottom: 8px;
+}
+
+.result-normal {
+    font-size: 0.85rem;
+    color: #999;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e8e8e8;
+}
+
+.result-description {
+    font-size: 0.9rem;
+    color: #666;
+    line-height: 1.5;
+    margin: 0;
+}
+
+/* ========================================
+   SUMMARY SECTION
+   ======================================== */
+
+.summary-box {
+    background: linear-gradient(135deg, #fff5f5 0%, #fff9f9 100%);
+    border-left: 4px solid #ff8787;
+    padding: 20px;
+    border-radius: 8px;
+}
+
+.summary-box h3 {
+    color: #ff8787;
+    margin-top: 0;
+}
+
+.summary-box p {
+    color: #666;
+    line-height: 1.6;
+}
+
+.summary-box ul {
+    list-style: none;
+    padding: 0;
+    margin: 12px 0 0 0;
+}
+
+.summary-box li {
+    color: #666;
+    padding: 8px 0;
+    border-bottom: 1px solid #ffe0e0;
+}
+
+.summary-box li:last-child {
+    border-bottom: none;
+}
+
+/* ========================================
+   RECOMMENDATIONS
+   ======================================== */
+
+.recommendation-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+}
+
+.recommendation-item {
+    display: flex;
+    gap: 16px;
+    padding: 16px;
+    background: #f5f5f5;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.recommendation-item:hover {
+    background: #fff3f3;
+    border-left: 4px solid #ff8787;
+}
+
+.rec-icon {
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, #ff8787 0%, #ff6b6b 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.3rem;
+    flex-shrink: 0;
+}
+
+.rec-content h3 {
+    margin: 0 0 8px 0;
+    font-size: 1rem;
+}
+
+.rec-content p {
+    margin: 0;
+    color: #666;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+/* ========================================
+   AI ASSISTANT SECTION
+   ======================================== */
+
+.ai-section {
+    background: linear-gradient(135deg, #fff5f5 0%, #fff9f9 100%);
+    border: 2px dashed #ff8787;
+}
+
+.ai-prompt {
+    text-align: center;
+    padding: 20px 0;
+}
+
+.ai-prompt p {
+    color: #666;
+    font-size: 0.95rem;
+    margin-bottom: 20px;
+}
+
+.btn-ask-ai {
+    padding: 14px 28px;
+    background: linear-gradient(135deg, #ff8787 0%, #ff6b6b 100%);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.3s ease;
+}
+
+.btn-ask-ai:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 135, 135, 0.3);
+}
+
+/* ========================================
+   DOWNLOAD HISTORY
+   ======================================== */
+
+.history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.history-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: #f5f5f5;
+    border-radius: 6px;
+    border-left: 3px solid #ff8787;
+}
+
+.history-item-info {
+    flex: 1;
+}
+
+.history-item-name {
+    font-weight: 600;
+    color: #1a1a1a;
+    margin-bottom: 4px;
+}
+
+.history-item-date {
+    font-size: 0.85rem;
+    color: #999;
+}
+
+.history-item-action {
+    display: flex;
+    gap: 8px;
+}
+
+.history-item-action button {
+    padding: 6px 12px;
+    border: none;
+    background: white;
+    color: #ff8787;
+    border: 1px solid #ff8787;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.3s ease;
+}
+
+.history-item-action button:hover {
+    background: #ff8787;
+    color: white;
+}
+
+/* ========================================
+   PRINT STYLES
+   ======================================== */
+
+@media print {
+    body {
+        background: white;
+    }
+
+    .main-header,
+    .header-actions,
+    .ai-section,
+    .download-history {
+        display: none;
+    }
+
+    .report-container {
+        padding: 0;
+        background: white;
+    }
+
+    .report-section {
+        box-shadow: none;
+        border: 1px solid #e8e8e8;
+        page-break-inside: avoid;
+    }
+
+    .result-card {
+        page-break-inside: avoid;
+    }
+}
+
+/* ========================================
+   RESPONSIVE DESIGN
+   ======================================== */
+
+@media (max-width: 768px) {
+    .report-header {
+        flex-direction: column;
+        gap: 20px;
+        text-align: center;
+    }
+
+    .report-header h1 {
+        font-size: 1.5rem;
+    }
+
+    .header-actions {
+        width: 100%;
+        flex-direction: column;
+    }
+
+    .btn-primary,
+    .btn-secondary {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .patient-info .info-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .results-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .recommendation-list {
+        grid-template-columns: 1fr;
+    }
+
+    .report-section {
+        padding: 20px;
+    }
+
+    .report-section h2 {
+        font-size: 1.3rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .report-container {
+        padding: 20px 15px;
+    }
+
+    .report-header {
+        padding: 20px;
+    }
+
+    .report-header h1 {
+        font-size: 1.3rem;
+    }
+
+    .report-section {
+        padding: 15px;
+        margin-bottom: 15px;
+    }
+
+    .report-section h2 {
+        font-size: 1.1rem;
+        margin-bottom: 16px;
+    }
+
+    .result-value {
+        font-size: 1.5rem;
+    }
+
+    .btn-ask-ai {
+        width: 100%;
+        justify-content: center;
+    }
+}

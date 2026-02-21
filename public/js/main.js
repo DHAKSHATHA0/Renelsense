@@ -14,6 +14,9 @@ let serverConfig = {
     getAPIURL: function() {
         return `http://${this.serverIP}:${this.serverPort}`;
     },
+    getServerURL: function() {
+        return `http://${this.serverIP}:${this.serverPort}`;
+    },
     getMLApiURL: function() {
         return `http://${this.mlApiIP}:${this.mlApiPort}`;
     }
@@ -42,12 +45,17 @@ async function loadServerConfig() {
 loadServerConfig();
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Smart Kidney Monitoring System loaded');
+    console.log('Renal Sense - Professional Kidney Monitoring System loaded');
+    
+    // Initialize authentication UI
+    initAuthUI();
     
     // Initialize all features
     initSmoothScroll();
     initScrollAnimations();
     initNavigation();
+    initNewsletter();
+    initButtons();
     initParallaxEffect();
     initCounterAnimation();
     
@@ -284,5 +292,64 @@ style.textContent = `
         }
     }
 `;
+
+// Newsletter functionality
+function initNewsletter() {
+    const newsletterForm = document.getElementById('newsletter-form');
+    if (newsletterForm) {
+        newsletterForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const email = this.querySelector('input[type="email"]').value;
+            
+            // Show success message
+            const button = this.querySelector('button');
+            const originalText = button.textContent;
+            button.textContent = '✓ Subscribed!';
+            button.style.backgroundColor = '#28a745';
+            
+            // Reset after 3 seconds
+            setTimeout(() => {
+                button.textContent = originalText;
+                button.style.backgroundColor = '';
+                this.reset();
+            }, 3000);
+        });
+    }
+}
+
+// Button enhancements
+function initButtons() {
+    const buttons = document.querySelectorAll('.btn');
+    buttons.forEach(btn => {
+        btn.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-2px)';
+        });
+        btn.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+        });
+    });
+}
+
+// Initialize authentication UI
+function initAuthUI() {
+    const authLink = document.getElementById('authLink');
+    const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+    
+    if (authLink) {
+        if (currentUser) {
+            authLink.textContent = 'Logout';
+            authLink.href = '#';
+            authLink.onclick = (e) => {
+                e.preventDefault();
+                logout();
+            };
+        } else {
+            authLink.textContent = 'Login';
+            authLink.href = 'login.html';
+        }
+    }
+}
+
+
 
 document.head.appendChild(style);

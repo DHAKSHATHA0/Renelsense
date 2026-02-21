@@ -3,116 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Health Chatbot with Voice - Smart Kidney Monitor</title>
+    <title>AI Kidney Health Chatbot - Renal Sense</title>
     <link rel="stylesheet" href="css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
-        /* Chatbot Specific Styles */
         body {
             margin: 0;
             padding: 0;
-            overflow: hidden;
-        }
-
-        .main-header {
-            display: none;
+            background: #f5f7fa;
         }
 
         .chatbot-container {
             display: flex;
             flex-direction: column;
             height: 100vh;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 0;
-            width: 100%;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
         }
 
-        .chatbot-header {
-            background: white;
-            border-radius: 0;
-            padding: 20px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            margin-bottom: 0;
-            flex-shrink: 0;
-        }
-
-        .chatbot-header h1 {
-            margin: 0;
-            color: #333;
-            font-size: 24px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .chatbot-header .status {
-            font-size: 12px;
-            color: #666;
-            margin-top: 5px;
-        }
-
-        .patient-info {
-            background: #f0f4ff;
-            border-radius: 10px;
-            padding: 15px;
-            margin-top: 10px;
-            border-left: 4px solid #667eea;
-        }
-
-        .patient-info h3 {
-            margin: 0 0 10px 0;
-            color: #333;
-            font-size: 14px;
-        }
-
-        .info-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            font-size: 13px;
-        }
-
-        .info-item {
-            background: white;
-            padding: 8px 12px;
-            border-radius: 8px;
-            color: #555;
-        }
-
-        .info-label {
-            font-weight: 600;
-            color: #667eea;
-        }
-
-        .chatbot-body {
+        .chat-messages {
             flex: 1;
-            background: white;
             overflow-y: auto;
             padding: 20px;
             display: flex;
             flex-direction: column;
             gap: 15px;
+            background: #fff;
         }
 
         .message {
             display: flex;
-            gap: 10px;
+            gap: 12px;
             animation: slideIn 0.3s ease-out;
-        }
-
-        .message.user {
-            justify-content: flex-end;
-        }
-
-        .message.bot {
-            justify-content: flex-start;
         }
 
         @keyframes slideIn {
@@ -126,54 +47,62 @@
             }
         }
 
-        .message-avatar {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-            flex-shrink: 0;
-        }
-
-        .bot .message-avatar {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-
-        .user .message-avatar {
-            background: #e3f2fd;
-            color: #1976d2;
+        .message.user {
+            justify-content: flex-end;
         }
 
         .message-content {
-            max-width: 70%;
+            max-width: 60%;
             padding: 12px 16px;
             border-radius: 12px;
             word-wrap: break-word;
             line-height: 1.5;
         }
 
-        .bot .message-content {
-            background: #f0f4ff;
-            color: #333;
-            border-left: 3px solid #667eea;
-        }
-
-        .user .message-content {
+        .message.user .message-content {
             background: #667eea;
             color: white;
-            border-radius: 12px;
+            border-radius: 18px 18px 4px 18px;
+        }
+
+        .message.bot .message-content {
+            background: #e8eef7;
+            color: #333;
+            border-radius: 18px 18px 18px 4px;
+        }
+
+        .message.bot .avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: #667eea;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .message.user .avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: #667eea;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+            flex-shrink: 0;
         }
 
         .typing-indicator {
             display: flex;
             gap: 4px;
-            align-items: center;
             padding: 12px 16px;
-            background: #f0f4ff;
-            border-radius: 12px;
+            background: #e8eef7;
+            border-radius: 18px 18px 18px 4px;
             width: fit-content;
         }
 
@@ -195,383 +124,131 @@
 
         @keyframes typing {
             0%, 60%, 100% {
-                opacity: 0.5;
                 transform: translateY(0);
             }
             30% {
-                opacity: 1;
                 transform: translateY(-10px);
             }
         }
 
-        .chatbot-footer {
-            background: white;
+        .chat-input-area {
             padding: 20px;
-            border-radius: 0;
-            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+            background: white;
+            border-top: 1px solid #e0e0e0;
             display: flex;
-            gap: 10px;
-            margin-top: 0;
-            flex-shrink: 0;
+            gap: 12px;
         }
 
         .input-wrapper {
             flex: 1;
             display: flex;
-            gap: 10px;
+            gap: 8px;
         }
 
-        #chatInput {
+        #messageInput {
             flex: 1;
             padding: 12px 16px;
             border: 2px solid #e0e0e0;
-            border-radius: 25px;
+            border-radius: 24px;
             font-family: 'Poppins', sans-serif;
             font-size: 14px;
             outline: none;
-            transition: all 0.3s;
+            transition: border-color 0.3s;
         }
 
-        #chatInput:focus {
+        #messageInput:focus {
             border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
 
         .send-btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: #667eea;
             color: white;
             border: none;
-            width: 45px;
-            height: 45px;
-            border-radius: 50%;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 18px;
-            transition: transform 0.2s;
+            transition: background 0.3s, transform 0.2s;
         }
 
         .send-btn:hover:not(:disabled) {
+            background: #5568d3;
             transform: scale(1.05);
         }
 
         .send-btn:disabled {
-            opacity: 0.5;
+            background: #ccc;
             cursor: not-allowed;
         }
 
-        .suggested-prompts {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-
-        .prompt-btn {
-            background: #f0f4ff;
-            border: 1px solid #e0e0e0;
-            padding: 10px 12px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 12px;
-            color: #333;
-            transition: all 0.2s;
-            font-family: 'Poppins', sans-serif;
-        }
-
-        .prompt-btn:hover {
-            background: #667eea;
+        .clear-btn {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: #f44336;
             color: white;
-            border-color: #667eea;
-        }
-
-        .back-btn {
-            background: #f5f5f5;
             border: none;
-            padding: 10px 16px;
-            border-radius: 8px;
             cursor: pointer;
-            color: #333;
             display: flex;
             align-items: center;
-            gap: 8px;
-            font-family: 'Poppins', sans-serif;
-            transition: all 0.2s;
+            justify-content: center;
+            font-size: 18px;
+            transition: background 0.3s;
         }
 
-        .back-btn:hover {
-            background: #e0e0e0;
+        .clear-btn:hover {
+            background: #d32f2f;
+        }
+
+        .welcome-message {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+        }
+
+        .welcome-message h2 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .welcome-message p {
+            margin: 5px 0;
         }
 
         .error-message {
             background: #ffebee;
             color: #c62828;
-            padding: 12px;
+            padding: 12px 16px;
             border-radius: 8px;
-            border-left: 4px solid #c62828;
-            margin: 10px 0;
+            border-left: 4px solid #f44336;
         }
 
-        .success-message {
-            background: #e8f5e9;
-            color: #2e7d32;
-            padding: 12px;
-            border-radius: 8px;
-            border-left: 4px solid #2e7d32;
-            margin: 10px 0;
-        }
-
-        /* Markdown Rendering Styles */
-        .message-content h1,
-        .message-content h2,
-        .message-content h3 {
-            margin: 12px 0 8px 0;
-            font-weight: 600;
-            line-height: 1.3;
-        }
-
-        .message-content h1 {
-            font-size: 18px;
-        }
-
-        .message-content h2 {
-            font-size: 16px;
-        }
-
-        .message-content h3 {
-            font-size: 15px;
-        }
-
-        .message-content p {
-            margin: 8px 0;
-            line-height: 1.6;
-        }
-
-        .message-content ul,
-        .message-content ol {
-            margin: 8px 0 8px 20px;
-            padding-left: 15px;
-        }
-
-        .message-content li {
-            margin: 6px 0;
-            line-height: 1.5;
-        }
-
-        .message-content strong {
-            font-weight: 600;
-            color: #333;
-        }
-
-        .message-content em {
-            font-style: italic;
-        }
-
-        .message-content code {
-            background: rgba(0, 0, 0, 0.1);
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-family: 'Courier New', monospace;
-            font-size: 12px;
-        }
-
-        .message-content pre {
-            background: rgba(0, 0, 0, 0.1);
-            padding: 10px;
-            border-radius: 6px;
-            overflow-x: auto;
-            font-family: 'Courier New', monospace;
-            font-size: 12px;
-            margin: 8px 0;
-        }
-
-        .message-content pre code {
-            background: none;
-            padding: 0;
-            border-radius: 0;
-        }
-
-        .message-content blockquote {
-            border-left: 4px solid #667eea;
-            padding-left: 12px;
-            margin: 8px 0;
-            color: #666;
-            font-style: italic;
-        }
-
-        .message-content hr {
-            border: none;
-            border-top: 1px solid rgba(0, 0, 0, 0.1);
-            margin: 12px 0;
-        }
-
-        .message-content table {
-            border-collapse: collapse;
-            width: 100%;
-            margin: 8px 0;
-            font-size: 13px;
-        }
-
-        .message-content table th,
-        .message-content table td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
-        }
-
-        .message-content table th {
-            background: rgba(102, 126, 234, 0.1);
-            font-weight: 600;
-        }
-
-        .message-content a {
-            color: #667eea;
-            text-decoration: none;
-            border-bottom: 1px dashed #667eea;
-        }
-
-        .message-content a:hover {
-            text-decoration: underline;
-        }
-
-        .no-messages {
+        .loading {
             text-align: center;
+            padding: 20px;
             color: #999;
-            padding: 40px 20px;
-            font-size: 14px;
         }
 
-        .clear-chat-btn {
-            background: #ff6b6b;
-            color: white;
-            border: none;
-            padding: 8px 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 12px;
-            font-family: 'Poppins', sans-serif;
-            transition: all 0.2s;
+        /* Scroll styling */
+        .chat-messages::-webkit-scrollbar {
+            width: 8px;
         }
 
-        .clear-chat-btn:hover {
-            background: #ff5252;
+        .chat-messages::-webkit-scrollbar-track {
+            background: #f1f1f1;
         }
 
-        /* Voice Assistance Styles */
-        .voice-btn {
-            background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
-            color: white;
-            border: none;
-            width: 45px;
-            height: 45px;
-            border-radius: 50%;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-            transition: transform 0.2s, box-shadow 0.2s;
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: #ddd;
+            border-radius: 4px;
         }
 
-        .voice-btn:hover:not(:disabled) {
-            transform: scale(1.05);
-            box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
-        }
-
-        .voice-btn.recording {
-            animation: pulse 1s infinite;
-            background: linear-gradient(135deg, #f44336 0%, #e53935 100%);
-        }
-
-        @keyframes pulse {
-            0%, 100% {
-                box-shadow: 0 0 0 0 rgba(244, 67, 54, 0.7);
-            }
-            50% {
-                box-shadow: 0 0 0 10px rgba(244, 67, 54, 0.3);
-            }
-        }
-
-        .audio-playback {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 10px;
-            background: #f5f5f5;
-            border-radius: 8px;
-            margin: 10px 0;
-        }
-
-        .audio-playback audio {
-            flex: 1;
-            height: 30px;
-        }
-
-        .voice-indicator {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 3px;
-            font-size: 12px;
-            color: #666;
-        }
-
-        .wave {
-            width: 3px;
-            height: 10px;
-            background: #4caf50;
-            border-radius: 2px;
-            animation: sound 0.6s infinite;
-        }
-
-        .wave:nth-child(2) {
-            animation-delay: 0.1s;
-            height: 15px;
-        }
-
-        .wave:nth-child(3) {
-            animation-delay: 0.2s;
-            height: 10px;
-        }
-
-        @keyframes sound {
-            0%, 100% { height: 10px; }
-            50% { height: 20px; }
-        }
-
-        .feature-badge {
-            display: inline-block;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 11px;
-            font-weight: 600;
-            margin-top: 10px;
-        }
-
-        @media (max-width: 768px) {
-            .chatbot-container {
-                height: 100vh;
-            }
-
-            .message-content {
-                max-width: 85%;
-            }
-
-            .info-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .suggested-prompts {
-                grid-template-columns: 1fr;
-            }
-
-            .back-btn {
-                padding: 8px 12px;
-                font-size: 12px;
-            }
+        .chat-messages::-webkit-scrollbar-thumb:hover {
+            background: #999;
         }
     </style>
 </head>
@@ -581,142 +258,51 @@
         <div class="container header-container">
             <div class="logo-wrapper">
                 <div class="logo-icon">
-                    <i class="fas fa-heartbeat"></i>
+                    <img src="images/logo.jpeg" alt="Renal Sense Logo">
                 </div>
-                <h1 class="project-name">Smart Kidney Monitor</h1>
+                <h1 class="project-name">Renal Sense</h1>
             </div>
             <nav class="main-nav">
                 <ul>
                     <li><a href="index.html" class="nav-link">Home</a></li>
+                    <li><a href="chatbot.html" class="nav-link active">AI Assistant</a></li>
                     <li><a href="live-test.html" class="nav-link">Live Test</a></li>
-                    <li><a href="result.html" class="nav-link">Result</a></li>
-                    <li><a href="chatbot.html" class="nav-link active">Chatbot</a></li>
-                    <li><a href="history.html" class="nav-link">History</a></li>
-                    <li><a href="about.html" class="nav-link">About</a></li>
+                    <li><a href="result.html" class="nav-link">Results</a></li>
                 </ul>
             </nav>
         </div>
     </header>
 
-    <!-- Main Chatbot Container -->
     <div class="chatbot-container">
-        <!-- Chatbot Header with Patient Info -->
-        <div class="chatbot-header">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <h1>
-                        <i class="fas fa-robot"></i>
-                        Health Tips Assistant
-                        <span class="feature-badge">
-                            <i class="fas fa-brain"></i> Google Gemini AI
-                        </span>
-                    </h1>
-                    <div class="status">
-                        <i class="fas fa-circle" style="color: #4caf50; font-size: 8px;"></i> Online & Ready to Help
-                    </div>
-                </div>
-                <button class="back-btn" onclick="goBackToResult()">
-                    <i class="fas fa-arrow-left"></i> Back to Result
+        <div class="chat-messages" id="chatMessages">
+            <div class="welcome-message">
+                <h2>🤖 Kidney Health Assistant</h2>
+                <p>Powered by Gork AI</p>
+                <p style="margin-top: 20px; color: #666; font-size: 14px;">
+                    Ask me anything about kidney health, kidney stones, kidney disease, eGFR, and medical care advice.
+                </p>
+            </div>
+        </div>
+
+        <div class="chat-input-area">
+            <div class="input-wrapper">
+                <input 
+                    type="text" 
+                    id="messageInput" 
+                    placeholder="Type your question... (e.g., 'How to cure kidney stone?' or 'What is eGFR?')"
+                    autocomplete="off"
+                >
+                <button class="send-btn" id="sendBtn" title="Send message">
+                    <i class="fas fa-paper-plane"></i>
                 </button>
             </div>
-
-            <!-- Patient Information Display -->
-            <div class="patient-info" id="patientInfo">
-                <h3><i class="fas fa-user-circle"></i> Your Test Results</h3>
-                <div class="info-grid">
-                    <div class="info-item">
-                        <span class="info-label">eGFR:</span>
-                        <span id="patientEGFR">--</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Status:</span>
-                        <span id="patientStatus">--</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Risk Level:</span>
-                        <span id="patientRisk">--</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Confidence:</span>
-                        <span id="patientConfidence">--</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Chat Messages Area -->
-        <div class="chatbot-body" id="chatBody">
-            <div class="no-messages">
-                <i class="fas fa-comments" style="font-size: 48px; color: #ddd; margin-bottom: 20px; display: block;"></i>
-                <p>Start a conversation with our Health Tips Assistant!</p>
-                <p style="font-size: 12px; margin-top: 10px;">Ask about kidney health, care tips, lifestyle recommendations, and more.</p>
-            </div>
-        </div>
-
-        <!-- Chat Footer with Input -->
-        <div class="chatbot-footer">
-            <div style="width: 100%;">
-                <!-- Suggested Prompts -->
-                <div class="suggested-prompts" id="suggestedPrompts" style="display: none;">
-                    <button class="prompt-btn" onclick="sendMessage('What are the best foods for kidney health?')">
-                        <i class="fas fa-apple-alt"></i> Diet Tips
-                    </button>
-                    <button class="prompt-btn" onclick="sendMessage('What exercises should I do?')">
-                        <i class="fas fa-dumbbell"></i> Exercise Guide
-                    </button>
-                    <button class="prompt-btn" onclick="sendMessage('How often should I get tested?')">
-                        <i class="fas fa-calendar"></i> Test Schedule
-                    </button>
-                    <button class="prompt-btn" onclick="sendMessage('What should I avoid?')">
-                        <i class="fas fa-ban"></i> Things to Avoid
-                    </button>
-                </div>
-
-                <!-- Input Area -->
-                <div class="input-wrapper">
-                    <input 
-                        type="text" 
-                        id="chatInput" 
-                        placeholder="Ask me about your kidney health..." 
-                        onkeypress="handleKeyPress(event)"
-                    >
-                    <button class="voice-btn" id="voiceBtn" onclick="toggleVoiceInput()" title="Voice Input (Click to speak)">
-                        <i class="fas fa-microphone"></i>
-                    </button>
-                    <button class="send-btn" id="sendBtn" onclick="sendMessage()">
-                        <i class="fas fa-paper-plane"></i>
-                    </button>
-                </div>
-
-                <!-- Voice Status Indicator -->
-                <div id="voiceStatus" style="display: none; margin-top: 10px;">
-                    <div class="voice-indicator">
-                        <span>Listening...</span>
-                        <div class="wave"></div>
-                        <div class="wave"></div>
-                        <div class="wave"></div>
-                    </div>
-                </div>
-
-                <!-- Text-to-Speech Toggle -->
-                <div style="margin-top: 10px; display: flex; align-items: center; gap: 10px;">
-                    <input type="checkbox" id="ttsToggle" checked>
-                    <label for="ttsToggle" style="font-size: 12px; color: #666;">
-                        <i class="fas fa-volume-up"></i> Play voice responses
-                    </label>
-                </div>
-
-                <!-- Action Buttons -->
-                <div style="display: flex; gap: 10px; margin-top: 10px;">
-                    <button class="clear-chat-btn" onclick="clearChat()">
-                        <i class="fas fa-trash"></i> Clear Chat
-                    </button>
-                </div>
-            </div>
+            <button class="clear-btn" id="clearBtn" title="Clear conversation">
+                <i class="fas fa-trash"></i>
+            </button>
         </div>
     </div>
 
-    <script src="js/main.js"></script>
-    <script src="js/chatbot-enhanced.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/chatbot.js"></script>
 </body>
 </html>
