@@ -1,86 +1,425 @@
-// History Page JavaScript - Clinical Records
-
-let trendChart;
-let historyData = [];
-
-async function initHistoryPage() {
-    // Wait for serverConfig to be available
-    let attempts = 0;
-    while (typeof serverConfig === 'undefined' && attempts < 50) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-        attempts++;
+// History Management System
+class TestHistory {
+    constructor() {
+        this.storageKey = 'kidneyTestHistory';
+        this.initializeStorage();
     }
-    
-    console.log('History Page Loaded');
-    console.log('Using server:', serverConfig.getAPIURL());
-    
-    // Initialize trend chart
-    initializeTrendChart();
-    
-    // Load and display history data
-    loadHistoryData();
-    
-    // Setup export functions
-    window.downloadHistory = downloadHistory;
-    window.shareHistory = shareHistory;
+
+    initializeStorage() {
+        if (!localStorage.getItem(this.storageKey)) {
+            localStorage.setItem(this.storageKey, JSON.stringify([]));
+        }
+    }
+
+    // Get all tests
+    getAllTests() {
+        return JSON.parse(localStorage.getItem(this.storageKey) || '[]');
+    }
+
+    // Add new test result
+    addTest(testData) {
+        const tests = this.getAllTests();
+        const newTest = {
+            id: `TEST-${Date.now()}`,
+            timestamp: new Date().toISOString(),
+            date: new Date().toLocaleDateString(),
+            time: new Date().toLocaleTimeString(),
+            ...testData
+        };
+        tests.unshift(newTest); // Add to beginning (newest first)
+        localStorage.setItem(this.storageKey, JSON.stringify(tests));
+        return newTest;
+    }
+
+    // Get test by ID
+    getTestById(testId) {
+        const tests = this.getAllTests();
+        return tests.find(test => test.id === testId);
+    }
+
+    // Clear all tests
+    clearAllTests() {
+        localStorage.setItem(this.storageKey, JSON.stringify([]));
+    }
+
+    // Export all tests as JSON
+    exportAsJSON() {
+        const tests = this.getAllTests();
+        const data = {
+            exportDate: new Date().toISOString(),
+            totalTests: tests.length,
+            tests: tests
+        };
+        return JSON.stringify(data, null, 2);
+    }
+
+    // Export as CSV
+    exportAsCSV() {
+        const tests = this.getAllTests();
+        if (tests.length === 0) return '';
+
+        const headers = ['Test ID', 'Date', 'Time', 'eGFR', 'Status', 'Risk Level', 'Confidence', 'Heart Rate', 'Temperature', 'Stage'];
+        const rows = tests.map(test => [
+            test.id || '',
+            test.date || '',
+            test.time || '',
+            test.eGFR || '--',
+            test.status || '--',
+            test.riskLevel || '--',
+            test.confidence || '--',
+            test.heartRate || '--',
+            test.temperature || '--',
+            test.stage || '--'
+        ]);
+
+        let csv = headers.join(',') + '\n';
+        rows.forEach(row => {
+            csv += row.map(cell => `"${cell}"`).join(',') + '\n';
+        });
+
+        return csv;
+    }
 }
 
-document.addEventListener('DOMContentLoaded', initHistoryPage);
+// Initialize history manager
+const testHistory = new TestHistory();
 
-function initializeTrendChart() {
-    const ctx = document.getElementById('trendChart');
-    if (!ctx) return;
+// Page initialization
+document.addEventListener('DOMContentLoaded', async function() {
+    console.log('History Page Loaded');
     
-    // Generate sample 12-month eGFR trend
-    const months = [];
-    const eGFRValues = [];
+    // Initialize event listeners
+    setupEventListeners();
     
-    for (let i = 11; i >= 0; i--) {
-        const date = new Date();
-        date.setMonth(date.getMonth() - i);
-        months.push(date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }));
-        
-        // Generate realistic downward trend with variations
-        eGFRValues.push(85 - (11 - i) * 0.3 + (Math.random() - 0.5) * 5);
+    // Load and display history
+    displayHistory();
+    
+    // Initialize chart
+    initializeProgressChart();
+});
+
+function setupEventListeners() {
+    // Search functionality
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            filterAndDisplayTests(this.value);
+        });
     }
+
+    // Sort functionality
+    const sortSelect = document.getElementById('sortSelect');
+    if (sortSelect) {
+        sortSelect.addEventListener('change', function() {
+            sortTests(this.value);
+        });
+    }
+
+    // Export button
+    const exportBtn = document.getElementById('exportAllBtn');
+    if (exportBtn) {
+        exportBtn.addEventListener('click', showExportOptions);
+    }
+
+    // Clear history button
+    const clearBtn = document.getElementById('clearHistoryBtn');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', function() {
+            if (confirm('Are you sure you want to clear all test history? This action cannot be undone.')) {
+                testHistory.clearAllTests();
+                displayHistory();
+            }
+        });
+    }
+}
+
+function displayHistory() {
+    const tests = testHistory.getAllTests();
+    const listContainer = document.getElementById('testsList');
+
+    if (tests.length === 0) {
+        listContainer.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-inbox"></i>
+                <p>No test history yet</p>
+                <a href="live-test.html" class="btn btn-primary">
+                    <i class="fas fa-play"></i> Start Your First Test
+                </a>
+            </div>
+        `;
+        updateSummaryCards([]);
+        return;
+    }
+
+    listContainer.innerHTML = tests.map(test => createTestCard(test)).join('');
+    updateSummaryCards(tests);
+
+    // Add event listeners to action buttons
+    document.querySelectorAll('.test-card').forEach((card, index) => {
+        const viewBtn = card.querySelector('.btn-view');
+        const downloadBtn = card.querySelector('.btn-download');
+        
+        if (viewBtn) {
+            viewBtn.addEventListener('click', () => viewTestDetails(tests[index]));
+        }
+        if (downloadBtn) {
+            downloadBtn.addEventListener('click', () => downloadTestResult(tests[index]));
+        }
+    });
+}
+
+function createTestCard(test) {
+    const statusColor = getStatusColor(test.riskLevel);
+    const riskIcon = getRiskIcon(test.riskLevel);
+
+    return `
+        <div class="test-card ${statusColor}">
+            <div class="test-card-header">
+                <div class="test-info">
+                    <h4>${test.id}</h4>
+                    <p class="test-date">
+                        <i class="fas fa-calendar"></i> ${test.date}
+                        <span class="test-time"><i class="fas fa-clock"></i> ${test.time}</span>
+                    </p>
+                </div>
+                <div class="test-status">
+                    <span class="status-badge ${statusColor}">
+                        <i class="fas ${riskIcon}"></i> ${test.riskLevel || '--'}
+                    </span>
+                </div>
+            </div>
+
+            <div class="test-card-body">
+                <div class="test-metric">
+                    <span class="metric-label">eGFR</span>
+                    <span class="metric-value">${test.eGFR || '--'}</span>
+                    <span class="metric-unit">mL/min</span>
+                </div>
+                <div class="test-metric">
+                    <span class="metric-label">Status</span>
+                    <span class="metric-value">${test.status || '--'}</span>
+                </div>
+                <div class="test-metric">
+                    <span class="metric-label">Heart Rate</span>
+                    <span class="metric-value">${test.heartRate || '--'}</span>
+                    <span class="metric-unit">BPM</span>
+                </div>
+                <div class="test-metric">
+                    <span class="metric-label">Temp</span>
+                    <span class="metric-value">${test.temperature || '--'}</span>
+                    <span class="metric-unit">°C</span>
+                </div>
+            </div>
+
+            <div class="test-card-footer">
+                <button class="btn-view btn btn-secondary btn-small">
+                    <i class="fas fa-eye"></i> View Details
+                </button>
+                <button class="btn-download btn btn-primary btn-small">
+                    <i class="fas fa-download"></i> Download
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+function getStatusColor(riskLevel) {
+    switch(riskLevel?.toLowerCase()) {
+        case 'low':
+            return 'status-low';
+        case 'medium':
+            return 'status-medium';
+        case 'high':
+            return 'status-high';
+        default:
+            return 'status-neutral';
+    }
+}
+
+function getRiskIcon(riskLevel) {
+    switch(riskLevel?.toLowerCase()) {
+        case 'low':
+            return 'fa-check-circle';
+        case 'medium':
+            return 'fa-exclamation-circle';
+        case 'high':
+            return 'fa-times-circle';
+        default:
+            return 'fa-circle';
+    }
+}
+
+function updateSummaryCards(tests) {
+    const totalTestsEl = document.getElementById('totalTests');
+    const avgEGFREl = document.getElementById('avgEGFR');
+    const latestStatusEl = document.getElementById('latestStatus');
+    const lastTestDateEl = document.getElementById('lastTestDate');
+
+    totalTestsEl.textContent = tests.length;
+
+    if (tests.length > 0) {
+        // Calculate average eGFR
+        const eGFRValues = tests
+            .map(t => parseFloat(t.eGFR))
+            .filter(v => !isNaN(v));
+        
+        if (eGFRValues.length > 0) {
+            const avgEGFR = (eGFRValues.reduce((a, b) => a + b, 0) / eGFRValues.length).toFixed(1);
+            avgEGFREl.textContent = avgEGFR;
+        }
+
+        // Latest status
+        latestStatusEl.textContent = tests[0].status || '--';
+
+        // Last test date
+        lastTestDateEl.textContent = tests[0].date || '--';
+    } else {
+        avgEGFREl.textContent = '--';
+        latestStatusEl.textContent = '--';
+        lastTestDateEl.textContent = '--';
+    }
+}
+
+function filterAndDisplayTests(searchTerm) {
+    const tests = testHistory.getAllTests();
+    const filtered = tests.filter(test => 
+        test.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        test.date.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    const listContainer = document.getElementById('testsList');
+    if (filtered.length === 0) {
+        listContainer.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-search"></i>
+                <p>No tests found matching "${searchTerm}"</p>
+            </div>
+        `;
+        return;
+    }
+
+    listContainer.innerHTML = filtered.map(test => createTestCard(test)).join('');
+    attachTestCardListeners(filtered);
+}
+
+function sortTests(sortBy) {
+    let tests = testHistory.getAllTests();
+
+    switch(sortBy) {
+        case 'newest':
+            tests.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            break;
+        case 'oldest':
+            tests.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+            break;
+        case 'eGFR-high':
+            tests.sort((a, b) => parseFloat(b.eGFR || 0) - parseFloat(a.eGFR || 0));
+            break;
+        case 'eGFR-low':
+            tests.sort((a, b) => parseFloat(a.eGFR || 0) - parseFloat(b.eGFR || 0));
+            break;
+    }
+
+    const listContainer = document.getElementById('testsList');
+    listContainer.innerHTML = tests.map(test => createTestCard(test)).join('');
+    attachTestCardListeners(tests);
+}
+
+function attachTestCardListeners(tests) {
+    document.querySelectorAll('.test-card').forEach((card, index) => {
+        const viewBtn = card.querySelector('.btn-view');
+        const downloadBtn = card.querySelector('.btn-download');
+        
+        if (viewBtn) {
+            viewBtn.addEventListener('click', () => viewTestDetails(tests[index]));
+        }
+        if (downloadBtn) {
+            downloadBtn.addEventListener('click', () => downloadTestResult(tests[index]));
+        }
+    });
+}
+
+function viewTestDetails(test) {
+    // Store the test in session storage for viewing
+    sessionStorage.setItem('viewingTest', JSON.stringify(test));
+    window.location.href = 'result.html?testId=' + test.id;
+}
+
+function downloadTestResult(test) {
+    const testData = JSON.stringify(test, null, 2);
+    const element = document.createElement('a');
+    element.setAttribute('href', 'data:application/json;charset=utf-8,' + encodeURIComponent(testData));
+    element.setAttribute('download', `test-${test.id}-${test.date}.json`);
+    element.style.display = 'none';
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+}
+
+function showExportOptions() {
+    const options = confirm('Choose export format:\n\nOK = JSON\nCancel = CSV');
     
-    trendChart = new Chart(ctx, {
+    if (options) {
+        // Export as JSON
+        const jsonData = testHistory.exportAsJSON();
+        const element = document.createElement('a');
+        element.setAttribute('href', 'data:application/json;charset=utf-8,' + encodeURIComponent(jsonData));
+        element.setAttribute('download', `kidney-test-history-${new Date().toISOString().split('T')[0]}.json`);
+        element.style.display = 'none';
+        document.body.appendChild(element);
+        element.click();
+        document.body.removeChild(element);
+    } else {
+        // Export as CSV
+        const csvData = testHistory.exportAsCSV();
+        const element = document.createElement('a');
+        element.setAttribute('href', 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvData));
+        element.setAttribute('download', `kidney-test-history-${new Date().toISOString().split('T')[0]}.csv`);
+        element.style.display = 'none';
+        document.body.appendChild(element);
+        element.click();
+        document.body.removeChild(element);
+    }
+}
+
+function initializeProgressChart() {
+    const tests = testHistory.getAllTests().reverse(); // Reverse to show oldest first
+    
+    if (tests.length === 0) {
+        const chartContainer = document.querySelector('.chart-container');
+        if (chartContainer) {
+            chartContainer.innerHTML = '<div class="empty-chart"><p>No data to display. Run your first test to see progress!</p></div>';
+        }
+        return;
+    }
+
+    const ctx = document.getElementById('progressChart');
+    if (!ctx) return;
+
+    const eGFRValues = tests.map(t => parseFloat(t.eGFR) || null);
+    const dates = tests.map(t => t.date);
+
+    new Chart(ctx, {
         type: 'line',
         data: {
-            labels: months,
-            datasets: [
-                {
-                    label: 'eGFR (mL/min/1.73m²)',
-                    data: eGFRValues,
-                    borderColor: '#1a5db0',
-                    backgroundColor: 'rgba(26, 93, 176, 0.1)',
-                    borderWidth: 3,
-                    tension: 0.4,
-                    fill: true,
-                    pointRadius: 5,
-                    pointBackgroundColor: '#1a5db0',
-                    pointBorderColor: '#fff',
-                    pointBorderWidth: 2
-                },
-                {
-                    label: 'Normal Range (90+)',
-                    data: Array(12).fill(90),
-                    borderColor: '#2e7d32',
-                    borderWidth: 1,
-                    borderDash: [5, 5],
-                    fill: false,
-                    pointRadius: 0
-                },
-                {
-                    label: 'Risk Threshold (60)',
-                    data: Array(12).fill(60),
-                    borderColor: '#f57c00',
-                    borderWidth: 1,
-                    borderDash: [5, 5],
-                    fill: false,
-                    pointRadius: 0
+            labels: dates,
+            datasets: [{
+                label: 'eGFR Progress',
+                data: eGFRValues,
+                borderColor: '#0066cc',
+                backgroundColor: 'rgba(0, 102, 204, 0.1)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4,
+                pointRadius: 6,
+                pointBackgroundColor: '#0066cc',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                pointHoverRadius: 8,
+                segment: {
+                    borderColor: ctx => eGFRValues[ctx.p0DataIndex] >= 60 ? '#28a745' : '#dc3545'
                 }
-            ]
+            }]
         },
         options: {
             responsive: true,
@@ -89,7 +428,7 @@ function initializeTrendChart() {
                 legend: {
                     display: true,
                     labels: {
-                        font: { size: 12, weight: '500' },
+                        font: { size: 12 },
                         padding: 15
                     }
                 }
@@ -97,177 +436,29 @@ function initializeTrendChart() {
             scales: {
                 y: {
                     beginAtZero: false,
-                    min: 30,
+                    min: 0,
                     max: 120,
+                    ticks: {
+                        stepSize: 20
+                    },
                     title: {
                         display: true,
-                        text: 'eGFR (mL/min/1.73m²)',
-                        font: { size: 12, weight: '600' }
-                    },
-                    ticks: { font: { size: 11 } }
+                        text: 'eGFR (mL/min/1.73m²)'
+                    }
                 },
                 x: {
                     title: {
                         display: true,
-                        text: 'Date',
-                        font: { size: 12, weight: '600' }
-                    },
-                    ticks: { font: { size: 11 } }
+                        text: 'Test Date'
+                    }
                 }
             }
         }
     });
 }
 
-function loadHistoryData() {
-    // Generate realistic sample history data
-    historyData = generateSampleHistoryData();
-    
-    // Update summary stats
-    updateSummaryStats();
-    
-    // Populate table
-    populateHistoryTable();
-}
-
-function generateSampleHistoryData() {
-    const data = [];
-    const baseDate = new Date();
-    
-    for (let i = 0; i < 12; i++) {
-        const testDate = new Date(baseDate);
-        testDate.setDate(testDate.getDate() - (i * 7)); // Weekly tests
-        
-        const eGFR = 85 - (i * 0.25) + (Math.random() - 0.5) * 5;
-        
-        data.push({
-            date: testDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
-            testId: 'TEST-' + String(1000 + i).padStart(5, '0'),
-            eGFR: eGFR.toFixed(1),
-            stage: getKidneyStage(eGFR),
-            status: getStatus(eGFR),
-            confidence: (92 + Math.random() * 8).toFixed(1),
-            details: getStageDetails(getKidneyStage(eGFR))
-        });
-    }
-    
-    return data.sort((a, b) => new Date(b.date) - new Date(a.date));
-}
-
-function getKidneyStage(eGFR) {
-    if (eGFR >= 90) return 'Normal';
-    if (eGFR >= 60) return 'Stage 2';
-    if (eGFR >= 45) return 'Stage 3a';
-    if (eGFR >= 30) return 'Stage 3b';
-    if (eGFR >= 15) return 'Stage 4';
-    return 'Stage 5';
-}
-
-function getStatus(eGFR) {
-    if (eGFR >= 90) return 'normal';
-    if (eGFR >= 60) return 'warning';
-    return 'critical';
-}
-
-function getStageDetails(stage) {
-    const details = {
-        'Normal': 'Excellent kidney function. Continue regular monitoring.',
-        'Stage 2': 'Mildly reduced function. Monitor annually.',
-        'Stage 3a': 'Moderate reduction. See nephrologist.',
-        'Stage 3b': 'Moderate reduction. Specialist care recommended.',
-        'Stage 4': 'Severe reduction. Immediate specialist consultation.',
-        'Stage 5': 'Critical. Requires active treatment planning.'
-    };
-    return details[stage] || 'Contact your healthcare provider';
-}
-
-function updateSummaryStats() {
-    document.getElementById('totalTests').textContent = historyData.length;
-    document.getElementById('lastEGFR').textContent = historyData[0].eGFR;
-    
-    // Calculate trend
-    if (historyData.length >= 3) {
-        const recent = parseFloat(historyData[0].eGFR);
-        const older = parseFloat(historyData[2].eGFR);
-        
-        if (recent > older) {
-            document.getElementById('trend').innerHTML = '<i class="fas fa-arrow-up" style="color: #2e7d32;"></i> Improving';
-        } else if (recent < older) {
-            document.getElementById('trend').innerHTML = '<i class="fas fa-arrow-down" style="color: #f57c00;"></i> Declining';
-        } else {
-            document.getElementById('trend').innerHTML = '<i class="fas fa-arrow-right" style="color: #666;"></i> Stable';
-        }
-    }
-    
-    // Last test date
-    const lastTestDate = new Date(historyData[0].date);
-    const today = new Date();
-    const daysAgo = Math.floor((today - lastTestDate) / (1000 * 60 * 60 * 24));
-    
-    if (daysAgo === 0) {
-        document.getElementById('lastTest').textContent = 'Today';
-    } else if (daysAgo === 1) {
-        document.getElementById('lastTest').textContent = 'Yesterday';
-    } else {
-        document.getElementById('lastTest').textContent = `${daysAgo} days ago`;
-    }
-}
-
-function populateHistoryTable() {
-    const tbody = document.getElementById('historyTableBody');
-    if (!tbody) return;
-    
-    tbody.innerHTML = historyData.map((test, idx) => `
-        <tr>
-            <td>${test.date}</td>
-            <td><strong>${test.testId}</strong></td>
-            <td>${test.eGFR}</td>
-            <td><strong>${test.stage}</strong></td>
-            <td><span class="status-${test.status}">${test.status.charAt(0).toUpperCase() + test.status.slice(1)}</span></td>
-            <td><span class="confidence-badge">${test.confidence}%</span></td>
-            <td>
-                <button class="btn-details" onclick="viewTestDetails('${test.testId}')">
-                    <i class="fas fa-file-medical"></i> View
-                </button>
-            </td>
-        </tr>
-    `).join('');
-}
-
-function viewTestDetails(testId) {
-    alert(`Viewing details for ${testId}. In a real implementation, this would load the detailed report.`);
-    // In production, redirect to report page with test ID
-    // window.location.href = `report.html?testId=${testId}`;
-}
-
-function downloadHistory() {
-    // In production, generate PDF or CSV
-    alert('Downloading history as PDF... In a real implementation, this would generate a professional PDF report.');
-    
-    // Example CSV generation
-    let csv = 'Date,Test ID,eGFR,Stage,Status,Confidence\n';
-    historyData.forEach(test => {
-        csv += `${test.date},${test.testId},${test.eGFR},${test.stage},${test.status},${test.confidence}%\n`;
-    });
-    
-    // Download CSV
-    const element = document.createElement('a');
-    element.setAttribute('href', 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv));
-    element.setAttribute('download', 'kidney-history.csv');
-    element.style.display = 'none';
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
-}
-
-function shareHistory() {
-    if (navigator.share) {
-        navigator.share({
-            title: 'My Kidney Function History',
-            text: 'Check out my kidney function monitoring history',
-            url: window.location.href
-        });
-    } else {
-        alert('Share link: ' + window.location.href);
-    }
-}
+// Function to save test from result page
+window.saveTestToHistory = function(testData) {
+    testHistory.addTest(testData);
+    console.log('Test saved to history:', testData);
+};

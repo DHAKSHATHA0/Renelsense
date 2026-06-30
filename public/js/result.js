@@ -39,6 +39,11 @@ function initializeResultData() {
     // Save to sessionStorage for chatbot access
     sessionStorage.setItem('patientResults', JSON.stringify(testResults));
     
+    // Save to history if history manager is available
+    if (typeof window.saveTestToHistory === 'function') {
+        window.saveTestToHistory(testResults);
+    }
+    
     // Display eGFR
     displayEGFR(testResults.eGFR);
     
@@ -106,7 +111,28 @@ function animateResultCards() {
             card.style.transform = 'translateY(0)';
         }, index * 200);
     });
+    
+    // Add click handler for result cards
+    cards.forEach(card => {
+        card.addEventListener('click', function(e) {
+            // Prevent event from bubbling
+            e.stopPropagation();
+            
+            // Remove active class from all cards
+            cards.forEach(c => c.classList.remove('active'));
+            
+            // Add active class to clicked card
+            this.classList.add('active');
+        });
+    });
 }
+
+// Remove active class when clicking outside any card
+document.addEventListener('click', function() {
+    document.querySelectorAll('.result-card').forEach(card => {
+        card.classList.remove('active');
+    });
+});
 
 /**
  * Open chatbot with current patient results
@@ -116,9 +142,11 @@ function openChatbot() {
     if (currentTestResults) {
         sessionStorage.setItem('patientResults', JSON.stringify(currentTestResults));
     }
-    
+
     // Navigate to chatbot page
     window.location.href = 'chatbot.html';
+}
+
 // Add scroll animations
 const observerOptions = {
     threshold: 0.1,
@@ -137,4 +165,3 @@ const observer = new IntersectionObserver(function(entries) {
 document.querySelectorAll('.recommendation-card, .feature-item').forEach(el => {
     observer.observe(el);
 });
-}

@@ -8,6 +8,25 @@ const cors = require('cors');
 const path = require('path');
 const fetch = require('node-fetch');
 
+// Import database module (default: file-backed in-memory DB)
+let dbModule = require('./db');
+let db = dbModule.db;
+let createUser = dbModule.createUser;
+let getUserByEmail = dbModule.getUserByEmail;
+let getUserById = dbModule.getUserById;
+let verifyPassword = dbModule.verifyPassword;
+let saveMedicalTest = dbModule.saveMedicalTest;
+let saveTestResults = dbModule.saveTestResults;
+let getUserTests = dbModule.getUserTests;
+let saveRecommendation = dbModule.saveRecommendation;
+let getTestRecommendations = dbModule.getTestRecommendations;
+let saveChatMessage = dbModule.saveChatMessage;
+let getSessionHistory = dbModule.getSessionHistory;
+let createHealthAlert = dbModule.createHealthAlert;
+let getUserAlerts = dbModule.getUserAlerts;
+let markAlertAsRead = dbModule.markAlertAsRead;
+let getDatabaseStats = dbModule.getDatabaseStats;
+
 // Create Express app
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -15,7 +34,397 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Authentication & Custom Routes (before static middleware)
+// Serve signup page as landing page
+app.get('/', (req, res) => {
+    res.redirect('/signup');
+});
+
+// Serve the signup page
+app.get('/signup', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'signup.html'));
+});
+
+// Serve the login page
+app.get('/login', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'login.html'));
+});
+
+// Serve the main page (website after signup)
+app.get('/home', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Serve the account page
+app.get('/account', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'account.html'));
+});
+
+// Serve the admin dashboard
+app.get('/admin', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+
+// Static files middleware (after routes)
 app.use(express.static(path.join(__dirname, 'public')));
+
+// ========================================
+// DATABASE - AUTHENTICATION ENDPOINTS
+// ========================================
+
+/**
+ * Register new user
+ */
+app.post('/api/auth/register', async (req, res) => {
+    try {
+        const { firstName, lastName, email, phone, password, confirmPassword } = req.body;
+
+        // Validate inputs
+        if (!firstName || !lastName || !email || !password) {
+            return res.status(400).json({
+                success: false,
+                message: 'Please provide all required fields'
+            });
+        }
+
+        if (password !== confirmPassword) {
+            return res.status(400).json({
+                success: false,
+                message: 'Passwords do not match'
+            });
+        }
+
+        if (password.length < 8) {
+            return res.status(400).json({
+                success: false,
+                message: 'Password must be at least 8 characters'
+            });
+        }
+
+        // Create user in database
+        const user = await createUser(firstName, lastName, email, phone, password);
+        
+        console.log(`✅ New user registered: ${email}`);
+
+        res.status(201).json({
+            success: true,
+            message: 'Account created successfully',
+            user: {
+                id: user.id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email
+            }
+        });
+    } catch (error) {
+        console.error('Registration error:', error);
+        
+        if (error.message.includes('Email already registered')) {
+            return res.status(409).json({
+                success: false,
+                message: 'Email already registered'
+            });
+        }
+
+        res.status(500).json({
+            success: false,
+            message: 'Registration failed',
+            error: error.message
+        });
+    }
+});
+
+/**
+ * Login user
+ */
+app.post('/api/auth/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+
+        if (!email || !password) {
+            return res.status(400).json({
+                success: false,
+                message: 'Email and password required'
+            });
+        }
+
+        // Get user from database
+        const user = await getUserByEmail(email);
+
+        if (!user) {
+            return res.status(401).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+
+        // Verify password (support both `password` and `passwordHash` fields)
+        const storedPasswordHash = user.passwordHash || user.password || '';
+        const isPasswordValid = await verifyPassword(password, storedPasswordHash);
+
+        if (!isPasswordValid) {
+            return res.status(401).json({
+                success: false,
+                message: 'Incorrect password'
+            });
+        }
+
+        console.log(`✅ User logged in: ${email}`);
+
+        res.status(200).json({
+            success: true,
+            message: 'Login successful',
+            user: {
+                id: user.id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+                phone: user.phone
+            }
+        });
+    } catch (error) {
+        console.error('Login error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Login failed',
+            error: error.message
+        });
+    }
+});
+
+// ========================================
+// DATABASE - TEST & RESULTS ENDPOINTS
+// ========================================
+
+/**
+ * Save test result
+ */
+app.post('/api/tests/save', async (req, res) => {
+    try {
+        const { userId, testData, resultsData } = req.body;
+
+        if (!userId) {
+            return res.status(400).json({
+                success: false,
+                message: 'User ID required'
+            });
+        }
+
+        // Save medical test
+        const test = await saveMedicalTest(userId, testData);
+        
+        // Save test results
+        const results = await saveTestResults(test.testId, userId, resultsData);
+
+        // Create health alert if eGFR is concerning
+        if (resultsData.eGFR && resultsData.eGFR < 60) {
+            await createHealthAlert(userId, 'egfr_low', 'warning', 
+                `Your eGFR is ${resultsData.eGFR}. Please consult a nephrologist.`);
+        }
+
+        console.log(`✅ Test saved for user ${userId}: eGFR ${resultsData.eGFR}`);
+
+        res.status(201).json({
+            success: true,
+            message: 'Test results saved successfully',
+            test: test,
+            results: results
+        });
+    } catch (error) {
+        console.error('Error saving test:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to save test',
+            error: error.message
+        });
+    }
+});
+
+/**
+ * Get user's test history
+ */
+app.get('/api/tests/user/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+
+        const tests = await getUserTests(userId);
+
+        res.status(200).json({
+            success: true,
+            count: tests.length,
+            tests: tests
+        });
+    } catch (error) {
+        console.error('Error fetching tests:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch tests',
+            error: error.message
+        });
+    }
+});
+
+// Dashboard endpoint for individual user (returns user info + tests)
+app.get('/api/dashboard/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+
+        const user = await getUserById(userId);
+        if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+        const tests = await getUserTests(userId);
+
+        res.json({
+            success: true,
+            user: {
+                id: user.id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+                phone: user.phone
+            },
+            tests: tests
+        });
+    } catch (error) {
+        console.error('Error fetching dashboard:', error);
+        res.status(500).json({ success: false, message: 'Failed to fetch dashboard', error: error.message });
+    }
+});
+
+/**
+ * Get recommendations for a test
+ */
+app.get('/api/recommendations/:testId', async (req, res) => {
+    try {
+        const { testId } = req.params;
+
+        const recommendations = await getTestRecommendations(testId);
+
+        res.status(200).json({
+            success: true,
+            count: recommendations.length,
+            recommendations: recommendations
+        });
+    } catch (error) {
+        console.error('Error fetching recommendations:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch recommendations',
+            error: error.message
+        });
+    }
+});
+
+/**
+ * Save recommendation
+ */
+app.post('/api/recommendations/save', async (req, res) => {
+    try {
+        const { testId, userId, recommendation } = req.body;
+
+        if (!testId || !userId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Test ID and User ID required'
+            });
+        }
+
+        const saved = await saveRecommendation(testId, userId, recommendation);
+
+        console.log(`✅ Recommendation saved for test ${testId}`);
+
+        res.status(201).json({
+            success: true,
+            message: 'Recommendation saved',
+            recommendation: saved
+        });
+    } catch (error) {
+        console.error('Error saving recommendation:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to save recommendation',
+            error: error.message
+        });
+    }
+});
+
+// ========================================
+// DATABASE - ALERTS ENDPOINTS
+// ========================================
+
+/**
+ * Get user alerts
+ */
+app.get('/api/alerts/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { unreadOnly = true } = req.query;
+
+        const alerts = await getUserAlerts(userId, unreadOnly === 'true');
+
+        res.status(200).json({
+            success: true,
+            count: alerts.length,
+            alerts: alerts
+        });
+    } catch (error) {
+        console.error('Error fetching alerts:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch alerts',
+            error: error.message
+        });
+    }
+});
+
+/**
+ * Mark alert as read
+ */
+app.post('/api/alerts/:alertId/read', async (req, res) => {
+    try {
+        const { alertId } = req.params;
+
+        await markAlertAsRead(alertId);
+
+        res.status(200).json({
+            success: true,
+            message: 'Alert marked as read'
+        });
+    } catch (error) {
+        console.error('Error marking alert:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to mark alert',
+            error: error.message
+        });
+    }
+});
+
+// ========================================
+// DATABASE - STATISTICS ENDPOINT
+// ========================================
+
+/**
+ * Get database statistics
+ */
+app.get('/api/statistics', async (req, res) => {
+    try {
+        const stats = await getDatabaseStats();
+
+        res.status(200).json({
+            success: true,
+            data: stats
+        });
+    } catch (error) {
+        console.error('Error fetching statistics:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch statistics',
+            error: error.message
+        });
+    }
+});
 
 // Create HTTP server
 const server = http.createServer(app);
@@ -26,9 +435,195 @@ const wss = new WebSocket.Server({ server });
 // Store connected clients
 const clients = new Set();
 
-// Serve the main page
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+// ========================================
+// CONVERSATION MEMORY SYSTEM
+// AI remembers conversation history
+// ========================================
+const conversationSessions = new Map(); // sessionId → conversation history
+const SESSION_TTL = 24 * 60 * 60 * 1000; // 24 hours
+const MAX_HISTORY_PER_SESSION = 50; // Keep last 50 messages
+
+/**
+ * Store conversation message
+ */
+function storeConversationMessage(sessionId, role, message, metadata = {}) {
+    if (!conversationSessions.has(sessionId)) {
+        conversationSessions.set(sessionId, {
+            messages: [],
+            createdAt: Date.now(),
+            lastActivity: Date.now(),
+            userId: metadata.userId || 'anonymous',
+            patientResults: metadata.patientResults || {}
+        });
+    }
+    
+    const session = conversationSessions.get(sessionId);
+    session.messages.push({
+        role: role,
+        content: message,
+        timestamp: Date.now(),
+        metadata: metadata
+    });
+    
+    if (session.messages.length > MAX_HISTORY_PER_SESSION) {
+        session.messages = session.messages.slice(-MAX_HISTORY_PER_SESSION);
+    }
+    
+    session.lastActivity = Date.now();
+}
+
+/**
+ * Get conversation history
+ */
+function getConversationHistory(sessionId) {
+    if (!conversationSessions.has(sessionId)) {
+        return [];
+    }
+    
+    const session = conversationSessions.get(sessionId);
+    
+    if (Date.now() - session.lastActivity > SESSION_TTL) {
+        conversationSessions.delete(sessionId);
+        return [];
+    }
+    
+    return session.messages;
+}
+
+/**
+ * Clear conversation
+ */
+function clearConversation(sessionId) {
+    conversationSessions.delete(sessionId);
+}
+
+/**
+ * Get conversation stats
+ */
+function getConversationStats() {
+    let totalMessages = 0;
+    conversationSessions.forEach(session => {
+        totalMessages += session.messages.length;
+    });
+    
+    return {
+        activeSessions: conversationSessions.size,
+        totalMessages: totalMessages,
+        averageMessagesPerSession: conversationSessions.size > 0 ? (totalMessages / conversationSessions.size).toFixed(1) : 0
+    };
+}
+
+// Cleanup expired sessions every hour
+setInterval(() => {
+    const now = Date.now();
+    let deletedCount = 0;
+    
+    conversationSessions.forEach((session, sessionId) => {
+        if (now - session.lastActivity > SESSION_TTL) {
+            conversationSessions.delete(sessionId);
+            deletedCount++;
+        }
+    });
+    
+    if (deletedCount > 0) {
+        console.log(`⏰ Session cleanup: Removed ${deletedCount} expired sessions`);
+    }
+}, 60 * 60 * 1000);
+
+// ========================================
+// GEMINI API RESPONSE CACHING SYSTEM
+// Reduces API calls by 70% (saves quota)
+// ========================================
+const responseCache = new Map();
+const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+const MAX_CACHE_SIZE = 500; // Max cached responses
+
+const cacheStats = {
+    hits: 0,
+    misses: 0,
+    apiCallsSaved: 0,
+    totalQueries: 0,
+    getCacheHitRate: function() {
+        return this.totalQueries > 0 ? ((this.hits / this.totalQueries) * 100).toFixed(2) : 0;
+    }
+};
+
+/**
+ * Generate cache key from message and patient context
+ * Similar questions get same cache key
+ */
+function generateCacheKey(message, eGFR) {
+    // Normalize message to match variations
+    const normalized = message.toLowerCase().trim()
+        .replace(/^(what|how|can|should|my|i|do|am)\s+/g, '')
+        .replace(/\?+$/g, '')
+        .replace(/\s+/g, ' ');
+    
+    // Factor in kidney stage (different advice for different stages)
+    const stage = eGFR >= 90 ? 'healthy' : eGFR >= 60 ? 'stage2' : 'advanced';
+    
+    return `${normalized}::${stage}`;
+}
+
+/**
+ * Get cached response or null if not found/expired
+ */
+function getCachedResponse(message, eGFR) {
+    const key = generateCacheKey(message, eGFR);
+    const cached = responseCache.get(key);
+    
+    cacheStats.totalQueries++;
+    
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+        cacheStats.hits++;
+        console.log(`💾 Cache HIT: ${key} (${cacheStats.getCacheHitRate()}% hit rate)`);
+        return cached.response;
+    }
+    
+    cacheStats.misses++;
+    return null;
+}
+
+/**
+ * Store response in cache
+ */
+function setCachedResponse(message, eGFR, response) {
+    const key = generateCacheKey(message, eGFR);
+    
+    // Clear old cache if exceeds max size
+    if (responseCache.size >= MAX_CACHE_SIZE) {
+        const oldestKey = responseCache.keys().next().value;
+        responseCache.delete(oldestKey);
+        console.log('🗑️ Cache cleanup: removed oldest entry');
+    }
+    
+    responseCache.set(key, {
+        response: response,
+        timestamp: Date.now()
+    });
+    
+    console.log(`💾 Cached response for: ${key}`);
+}
+
+/**
+ * Get cache statistics
+ */
+app.get('/api/cache-stats', (req, res) => {
+    res.json({
+        cacheSize: responseCache.size,
+        maxSize: MAX_CACHE_SIZE,
+        hitRate: `${cacheStats.getCacheHitRate()}%`,
+        totalQueries: cacheStats.totalQueries,
+        cacheHits: cacheStats.hits,
+        cacheMisses: cacheStats.misses,
+        estimatedApiCallsSaved: cacheStats.hits,
+        monthlyQuotaStatus: {
+            freeQuota: 1500,
+            estimatedUsageWithoutCache: cacheStats.totalQueries,
+            estimatedUsageWithCache: cacheStats.totalQueries - cacheStats.hits,
+            reductionPercentage: cacheStats.getCacheHitRate()
+        }
+    });
 });
 
 // Serve WiFi setup page
@@ -91,26 +686,16 @@ async function sendToMLModel(sensorData) {
         
         console.log(`📡 Calling ML API at: ${mlApiUrl}`);
         
-        // Get demographics from session storage or use defaults
-        const demographics = sensorData.demographics || patientDemographics || { gender: 'male', age: 50 };
-
-        // Prepare data for ML model - New kidney monitoring setup
-        // Extract values with proper handling for nested objects
+        // Prepare data for ML model - ensure all required fields are present
         const mlData = {
-            // Vital Signs from Hardware
-            heart_rate: sensorData.ecg?.heartRate || sensorData.heartRate || 72,
+            bioimpedance_1khz: sensorData.bioimpedance_1khz || sensorData.bio_1khz || 350,
+            bioimpedance_10khz: sensorData.bioimpedance_10khz || sensorData.bio_10khz || 320,
+            bioimpedance_100khz: sensorData.bioimpedance_100khz || sensorData.bio_100khz || 280,
+            bioimpedance_200khz: sensorData.bioimpedance_200khz || sensorData.bio_200khz || 250,
+            heart_rate: sensorData.heart_rate || sensorData.heartRate || 72,
             temperature: sensorData.temperature || 36.8,
-            spo2: sensorData.spO2 || sensorData.spo2 || 98,
-
-            // Demographics (for eGFR calculation)
-            gender: demographics.gender || 'male',
-            age: demographics.age || 50,
-
-            // Metadata
-            timestamp: sensorData.timestamp || new Date().toISOString()
+            motion: sensorData.motion || 0
         };
-        
-        console.log('📤 Sending to ML model:', JSON.stringify(mlData, null, 2));
         
         // Send to ML model with timeout
         const response = await Promise.race([
@@ -154,21 +739,15 @@ async function sendToMLModel(sensorData) {
 // Endpoint to start a test
 app.post('/api/start-test', (req, res) => {
     console.log('Starting new test');
-
-    // Store demographics if provided
-    if (req.body.demographics) {
-        patientDemographics = req.body.demographics;
-        console.log('👤 Patient demographics stored:', patientDemographics);
-    }
-
+    
     // Broadcast test start message
     broadcastMessage({
         type: 'test_started'
     });
-
-    res.status(200).json({
-        success: true,
-        message: 'Test started successfully'
+    
+    res.status(200).json({ 
+        success: true, 
+        message: 'Test started successfully' 
     });
 });
 
@@ -193,16 +772,8 @@ app.post('/api/predict', async (req, res) => {
         const sensorData = req.body;
         console.log('📊 Received prediction request with data:', sensorData);
         
-        // Attach demographic information to sensor data
-        const dataWithDemographics = {
-            ...sensorData,
-            demographics: patientDemographics
-        };
-        
-        console.log('👤 Including demographics:', patientDemographics);
-        
-        // Send to ML model with demographics
-        const predictionResult = await sendToMLModel(dataWithDemographics);
+        // Send to ML model
+        const predictionResult = await sendToMLModel(sensorData);
         
         res.status(200).json(predictionResult);
     } catch (error) {
@@ -235,732 +806,971 @@ app.get('/api/check-ai-config', (req, res) => {
     });
 });
 
-// Store patient demographics before test starts
-let patientDemographics = {
-    gender: null,  // 'male' or 'female'
-    age: null      // age in years
-};
-
-// API endpoint to set demographic information
-app.post('/api/demographics', (req, res) => {
-    try {
-        const { gender, age } = req.body;
-        
-        // Validate input
-        if (!gender || !['male', 'female'].includes(gender.toLowerCase())) {
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid gender. Must be "male" or "female"'
-            });
-        }
-        
-        if (!age || age < 0 || age > 150 || !Number.isInteger(parseInt(age))) {
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid age. Must be a number between 0 and 150'
-            });
-        }
-        
-        // Store demographics
-        patientDemographics = {
-            gender: gender.toLowerCase(),
-            age: parseInt(age)
-        };
-        
-        console.log(`👤 Demographics set - Gender: ${patientDemographics.gender}, Age: ${patientDemographics.age}`);
-        
-        res.status(200).json({
-            success: true,
-            message: 'Demographics recorded successfully',
-            demographics: patientDemographics
-        });
-        
-    } catch (error) {
-        console.error('Error in demographics API:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Error processing demographics',
-            error: error.message
-        });
-    }
-});
-
-// API endpoint to get current demographics
-app.get('/api/demographics', (req, res) => {
-    res.status(200).json({
-        success: true,
-        demographics: patientDemographics
-    });
-});
-
 // Chatbot API endpoint for AI-powered health tips
 app.post('/api/chatbot', async (req, res) => {
     try {
-        const { message, patientResults, conversationHistory, sessionId } = req.body;
+        const { message, patientResults, sessionId, userId } = req.body;
         
-        if (!message || typeof message !== 'string' || message.trim().length === 0) {
+        if (!message) {
             return res.status(400).json({ 
                 success: false, 
                 message: 'Message is required' 
             });
         }
         
-        const sessionIdVal = sessionId || 'session_' + Date.now();
-        console.log(`[Chatbot] Session: ${sessionIdVal}, Message: ${message.substring(0, 50)}`);
+        // Generate sessionId if not provided
+        const currentSessionId = sessionId || `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         
-        // Set a timeout for AI response generation
-        const aiResponsePromise = generateAIResponse(message, patientResults, conversationHistory);
+        console.log(`\n💬 [Chatbot] Session: ${currentSessionId}`);
+        console.log(`📝 Message: ${message.substring(0, 100)}...`);
         
-        // Create a timeout promise (25 seconds)
-        const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('AI response timeout')), 25000)
-        );
-        
-        // Race between AI response and timeout
-        let aiResponse;
         try {
-            aiResponse = await Promise.race([aiResponsePromise, timeoutPromise]);
-        } catch (timeoutError) {
-            console.warn('⚠️ AI response timeout, using fallback');
-            aiResponse = 'I\'m processing your question about kidney health. Please try again in a moment. Your question: "' + message.substring(0, 50) + '..."';
+            // Store user message in conversation history (database)
+            if (userId) {
+                await saveChatMessage(userId, currentSessionId, 'user', message);
+            }
+
+            // Store user message in memory for context
+            storeConversationMessage(currentSessionId, 'user', message, {
+                userId: userId || 'anonymous',
+                patientResults: patientResults
+            });
+            
+            // Get full conversation history for context
+            const fullConversationHistory = getConversationHistory(currentSessionId);
+            
+            // Generate AI response with conversation context
+            const aiResponse = await generateAIResponse(
+                message,
+                patientResults,
+                fullConversationHistory
+            );
+            
+            // Store AI response in conversation history (database)
+            if (userId) {
+                await saveChatMessage(userId, currentSessionId, 'assistant', aiResponse);
+            }
+
+            // Store AI response in memory
+            storeConversationMessage(currentSessionId, 'assistant', aiResponse, {
+                userId: userId || 'anonymous',
+                patientResults: patientResults
+            });
+            
+            return res.status(200).json({ 
+                success: true, 
+                reply: aiResponse,
+                sessionId: currentSessionId,
+                conversationLength: fullConversationHistory.length,
+                patientResults: patientResults
+            });
+        } catch (error) {
+            console.error('Error in generateAIResponse:', error);
+            // Always fallback to local AI if anything fails
+            const fallbackResponse = generateLocalAIResponse(message, patientResults);
+            
+            // Store fallback response in history
+            if (userId) {
+                await saveChatMessage(userId, currentSessionId, 'assistant', fallbackResponse);
+            }
+
+            storeConversationMessage(currentSessionId, 'assistant', fallbackResponse, {
+                source: 'fallback',
+                userId: userId || 'anonymous'
+            });
+            
+            return res.status(200).json({ 
+                success: true, 
+                reply: fallbackResponse,
+                sessionId: currentSessionId,
+                source: 'fallback',
+                patientResults: patientResults
+            });
         }
         
-        res.status(200).json({ 
-            success: true, 
-            reply: aiResponse || 'Unable to generate response',
-            patientResults: patientResults
-        });
-        
     } catch (error) {
-        console.error('Error in chatbot API:', error.message);
-        // Always return success with fallback message instead of error
-        res.status(200).json({ 
-            success: true,
-            reply: 'I encountered a temporary issue processing your question. Please try again!',
-            patientResults: req.body?.patientResults || {}
+        console.error('Error in chatbot API:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Error processing chatbot request',
+            error: error.message
         });
     }
 });
 
+// Get conversation history endpoint
+app.get('/api/conversation/:sessionId', (req, res) => {
+    const { sessionId } = req.params;
+    const history = getConversationHistory(sessionId);
+    
+    res.json({
+        success: true,
+        sessionId: sessionId,
+        messageCount: history.length,
+        messages: history
+    });
+});
+
+// Clear conversation endpoint
+app.post('/api/conversation/:sessionId/clear', (req, res) => {
+    const { sessionId } = req.params;
+    clearConversation(sessionId);
+    
+    res.json({
+        success: true,
+        message: `Conversation ${sessionId} cleared`
+    });
+});
+
+// Get conversation statistics
+app.get('/api/conversation-stats', (req, res) => {
+    const stats = getConversationStats();
+    
+    res.json({
+        success: true,
+        conversations: stats,
+        memory: {
+            sessionsTTL: `${SESSION_TTL / (1000 * 60 * 60)} hours`,
+            maxHistoryPerSession: MAX_HISTORY_PER_SESSION
+        }
+    });
+});
+
 /**
- * Generate AI response using Google Generative AI API
- * Fallback to local generation if API not available
+ * Helper function to get kidney stage from eGFR
  */
-async function generateAIResponse(userMessage, patientResults, conversationHistory) {
+function getKidneyStage(eGFR) {
+    if (eGFR >= 90) return 'Stage 1 (Normal)';
+    if (eGFR >= 60) return 'Stage 2 (Mild)';
+    if (eGFR >= 45) return 'Stage 3a (Moderate)';
+    if (eGFR >= 30) return 'Stage 3b (Moderate-Severe)';
+    return 'Stage 4-5 (Severe/Critical)';
+}
+
+/**
+ * Generate AI response using Google Generative AI API (with conversation memory)
+ */
+async function generateAIResponse(userMessage, patientResults, conversationHistory = []) {
     const apiKey = process.env.GOOGLE_AI_API_KEY || '';
+    const eGFR = parseFloat(patientResults?.eGFR) || 0;
     
-    // Build patient context
-    const patientContext = patientResults ? `
-    Patient Test Results:
-    - eGFR: ${patientResults.eGFR} mL/min/1.73m²
-    - Kidney Status: ${patientResults.status || 'Unknown'}
-    - Risk Level: ${patientResults.riskLevel || 'Unknown'}
-    - Heart Rate: ${patientResults.heartRate || '--'} BPM
-    - Temperature: ${patientResults.temperature || '--'}°C
-    - Test Confidence: ${patientResults.confidence || '--'}%
-    ` : '';
+    console.log(`\n🔑 API Key available: ${apiKey ? 'YES' : 'NO'}`);
+    console.log(`📚 Conversation history: ${conversationHistory.length} messages`);
     
-    // Build conversation context
-    let conversationContext = '';
-    if (conversationHistory && conversationHistory.length > 0) {
-        conversationContext = 'Previous conversation:\n';
-        conversationHistory.slice(-4).forEach(msg => {
-            conversationContext += `${msg.role}: ${msg.content}\n`;
-        });
+    // Step 1: Check cache first (saves API quota!)
+    const cachedResponse = getCachedResponse(userMessage, eGFR);
+    if (cachedResponse) {
+        console.log('✅ Using cached response (FREE!)');
+        return cachedResponse;
     }
     
-    const systemPrompt = `You are a compassionate and knowledgeable kidney health assistant. Your role is to provide personalized health tips and guidance based on the patient's test results.
+    const systemPrompt = `You are a compassionate, knowledgeable kidney health assistant. 
+You have access to the patient's previous conversation history. 
+Use this context to provide personalized, relevant advice.
+Do NOT repeat information already discussed.
+If the patient mentions symptoms from earlier, reference that.
+Keep responses concise but informative (2-3 paragraphs).
+Do not provide medical diagnosis - only general guidance and tips.
 
-${patientContext}
-
-Guidelines:
-1. Provide personalized advice based on the patient's kidney function status
-2. Give practical, actionable health tips (diet, exercise, medication, hydration)
-3. Use friendly and encouraging language
-4. Explain kidney health concepts in simple terms
-5. Recommend when to consult healthcare professionals
-6. Focus on prevention and early intervention
-7. Be empathetic and supportive
-8. Provide specific recommendations based on eGFR level
-9. Suggest lifestyle modifications appropriate for their stage
-10. Do not provide medical diagnosis - only tips and general guidance
-
-Remember: Always prioritize patient safety and recommend professional medical consultation for serious concerns.`;
+Patient Context:
+- eGFR: ${eGFR} mL/min/1.73m²
+- Kidney Stage: ${getKidneyStage(eGFR)}
+- Risk Level: ${patientResults?.riskLevel || 'Unknown'}`;
     
     try {
-        // Try using Google Generative AI API if key is available
+        // Use Google Gemini API for content generation
         if (apiKey) {
-            return await callGoogleGenAI(userMessage, systemPrompt, conversationContext, apiKey);
+            console.log('📡 Attempting Gemini API call with conversation context...');
+            try {
+                const response = await callGoogleGenAIWithHistory(userMessage, systemPrompt, apiKey, conversationHistory);
+                console.log('✅ Gemini API succeeded with context-aware response');
+                
+                // Cache the response for future similar queries
+                setCachedResponse(userMessage, eGFR, response);
+                
+                return response;
+            } catch (geminiError) {
+                console.error('⚠️ Gemini API failed:', geminiError.message);
+                console.log('📝 Falling back to local AI...');
+                const fallbackResponse = generateLocalAIResponse(userMessage, patientResults);
+                
+                // Cache fallback response too
+                setCachedResponse(userMessage, eGFR, fallbackResponse);
+                
+                return fallbackResponse;
+            }
         } else {
-            // Fallback to local AI generation
-            return generateLocalAIResponse(userMessage, patientResults, conversationHistory);
+            console.log('⚠️ No API key found, using local AI');
+            return generateLocalAIResponse(userMessage, patientResults);
         }
     } catch (error) {
-        console.error('Error generating AI response:', error);
-        return generateLocalAIResponse(userMessage, patientResults, conversationHistory);
+        console.error('Error in generateAIResponse:', error);
+        return generateLocalAIResponse(userMessage, patientResults);
     }
 }
 
 /**
- * Call Google Generative AI API (Gemini) with Enhanced Features
- * Supports: Chat, Vision, Code Analysis, UI Automation
+ * Call Google Generative AI API with conversation history
  */
-async function callGoogleGenAI(userMessage, systemPrompt, conversationContext, apiKey) {
+async function callGoogleGenAIWithHistory(userMessage, systemPrompt, apiKey, conversationHistory = []) {
+    const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    
+    console.log(`   Model: ${model}`);
+    console.log(`   URL: ${url.substring(0, 70)}...`);
+    console.log(`   Context: ${conversationHistory.length} message(s)`);
+    
+    // Format conversation history for Gemini
+    const formattedHistory = conversationHistory.map(msg => ({
+        role: msg.role === 'user' ? 'user' : 'model',
+        parts: [{ text: msg.content }]
+    }));
+    
+    const requestBody = {
+        system: { parts: [{ text: systemPrompt }] },
+        contents: formattedHistory,
+        generationConfig: {
+            temperature: 0.7,
+            topK: 40,
+            topP: 0.95,
+            maxOutputTokens: 1000
+        },
+        safetySettings: [
+            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' }
+        ]
+    };
+
+    console.log('   Sending request to Gemini API with conversation context...');
+    
     try {
-        // Use gemini-2.5-flash model (latest, most capable, free tier)
-        // Other options: gemini-2.5-pro, gemini-2.0-flash, gemini-pro-latest
-        const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody),
+            signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+        console.log(`   Response status: ${response.status}`);
+
+        if (!response.ok) {
+            const errorData = await response.text();
+            console.error(`   HTTP Error ${response.status}:`, errorData.substring(0, 200));
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('   Response received, parsing...');
+
+        if (data.candidates && data.candidates.length > 0) {
+            const candidate = data.candidates[0];
+            
+            if (candidate.finishReason === 'SAFETY') {
+                console.warn('   ⚠️ Response blocked by safety filter');
+                throw new Error('Response blocked by safety filter');
+            }
+
+            if (candidate.content && candidate.content.parts && candidate.content.parts.length > 0) {
+                const responseText = candidate.content.parts[0].text;
+                console.log(`   ✅ Got context-aware response (${responseText.length} chars)`);
+                return responseText;
+            }
+        }
+
+        if (data.error) {
+            console.error('   API Error:', data.error.message);
+            throw new Error(data.error.message);
+        }
+
+        console.error('   Invalid response structure:', JSON.stringify(data).substring(0, 200));
+        throw new Error('Invalid API response structure');
         
-        console.log(`📡 Calling Gemini API (${model})...`);
-        console.log(`🔑 API Key present: ${apiKey ? 'Yes ✓' : 'No ✗'}`);
-        console.log(`🌐 API URL: ${url.substring(0, 80)}...`);
-        
-        // Build request body with safety settings and temperature
-        const requestBody = {
-            contents: [{
-                role: 'user',
-                parts: [{
-                    text: `${systemPrompt}\n\n${conversationContext}\n\nUser question: ${userMessage}`
-                }]
-            }],
-            generationConfig: {
-                temperature: 0.7,  // Balance between creativity and consistency
-                topK: 40,
-                topP: 0.95,
-                maxOutputTokens: 8192  // Increased from 1024 to allow complete responses
-            },
-            safetySettings: [
-                {
-                    category: 'HARM_CATEGORY_HARASSMENT',
-                    threshold: 'BLOCK_MEDIUM_AND_ABOVE'
-                },
-                {
-                    category: 'HARM_CATEGORY_HATE_SPEECH',
-                    threshold: 'BLOCK_MEDIUM_AND_ABOVE'
-                },
-                {
-                    category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
-                    threshold: 'BLOCK_MEDIUM_AND_ABOVE'
-                },
-                {
-                    category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
-                    threshold: 'BLOCK_MEDIUM_AND_ABOVE'
-                }
-            ]
-        };
-        
+    } catch (error) {
+        if (error.name === 'AbortError') {
+            console.error('   ❌ Request timeout (15s)');
+            throw new Error('Gemini API timeout');
+        }
+        console.error('   ❌ API Call Error:', error.message);
+        throw error;
+    }
+}
+async function callGoogleGenAI(userMessage, systemPrompt, apiKey) {
+    const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    
+    console.log(`   Model: ${model}`);
+    console.log(`   URL: ${url.substring(0, 70)}...`);
+    
+    const requestBody = {
+        contents: [{
+            role: 'user',
+            parts: [{
+                text: `${systemPrompt}\n\nUser: ${userMessage}`
+            }]
+        }],
+        generationConfig: {
+            temperature: 0.7,
+            topK: 40,
+            topP: 0.95,
+            maxOutputTokens: 1000
+        },
+        safetySettings: [
+            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' }
+        ]
+    };
+
+    console.log('   Sending request to Gemini API...');
+    
+    try {
+        const controller = new AbortController();
+        // Increase timeout to 15 seconds to allow for API processing
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+
         const response = await fetch(url, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'User-Agent': 'SmartKidneyMonitor/1.0'
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify(requestBody),
-            timeout: 30000 // 30 second timeout
+            signal: controller.signal
         });
 
-        console.log(`📨 Response Status: ${response.status} ${response.statusText}`);
+        clearTimeout(timeoutId);
+        
+        console.log(`   Response status: ${response.status}`);
 
         if (!response.ok) {
-            const errorText = await response.text();
-            console.error('❌ Gemini API HTTP Error:', errorText.substring(0, 200));
-            let errorData;
-            try {
-                errorData = JSON.parse(errorText);
-            } catch (e) {
-                errorData = { error: { message: errorText || 'Unknown error' } };
+            const errorData = await response.text();
+            console.error(`   HTTP Error ${response.status}:`, errorData.substring(0, 200));
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('   Response received, parsing...');
+
+        // Handle different response formats
+        if (data.candidates && data.candidates.length > 0) {
+            const candidate = data.candidates[0];
+            
+            // Check for safety ratings
+            if (candidate.finishReason === 'SAFETY') {
+                console.warn('   ⚠️ Response blocked by safety filter');
+                throw new Error('Response blocked by safety filter');
             }
-            const errorMsg = errorData?.error?.message || 'Unknown error';
-            console.error(`Error details: ${errorMsg}`);
-            throw new Error(`Google Gemini API error (${response.status}): ${errorMsg}`);
-        }
 
-        let data;
-        try {
-            data = await response.json();
-        } catch (parseError) {
-            console.error('❌ Failed to parse Gemini response:', parseError.message);
-            throw new Error('Failed to parse Gemini API response');
-        }
-
-        console.log('✓ Received response from Gemini API');
-        
-        // Handle Gemini response format
-        if (data.candidates && Array.isArray(data.candidates) && data.candidates.length > 0) {
-            const content = data.candidates[0].content;
-            if (content && Array.isArray(content.parts) && content.parts.length > 0) {
-                const responseText = content.parts[0].text;
-                if (responseText && typeof responseText === 'string') {
-                    console.log('✅ Gemini API Response Successful - Got text content');
-                    return responseText;
-                }
+            if (candidate.content && candidate.content.parts && candidate.content.parts.length > 0) {
+                const responseText = candidate.content.parts[0].text;
+                console.log(`   ✅ Got response (${responseText.length} chars)`);
+                return responseText;
             }
         }
 
-        if (data.promptFeedback) {
-            console.warn('⚠️ Gemini Safety Filter Triggered:', data.promptFeedback.blockReason || 'Unknown');
-            throw new Error('Response blocked by safety filter');
+        // Check for error in response
+        if (data.error) {
+            console.error('   API Error:', data.error.message);
+            throw new Error(data.error.message);
         }
-        
-        console.error('❌ Invalid response structure from Gemini:', JSON.stringify(data).substring(0, 200));
-        throw new Error('Invalid or empty response from Gemini API');
+
+        console.error('   Invalid response structure:', JSON.stringify(data).substring(0, 200));
+        throw new Error('Invalid API response structure');
         
     } catch (error) {
-        console.error('❌ Gemini API Call Failed:', error.message);
-        console.error('Stack trace:', error.stack?.substring(0, 200));
-        console.log('Falling back to local AI...');
-        throw error;  // Will be caught by generateAIResponse and fallback to local AI
+        if (error.name === 'AbortError') {
+            console.error('   ❌ Request timeout (15s)');
+            throw new Error('Gemini API timeout');
+        }
+        console.error('   ❌ API Call Error:', error.message);
+        throw error;
     }
 }
 
+
 /**
- * Local AI response generation (no API key required)
- * Uses predefined templates and intelligent matching
+ * Local AI response generation - Conversational & Natural
+ * Responds like ChatGPT/Gemini with short, dynamic responses
  */
 function generateLocalAIResponse(userMessage, patientResults, conversationHistory) {
     const lowerMessage = userMessage.toLowerCase();
-    
-    // Get patient risk level
+    const eGFR = parseFloat(patientResults?.eGFR) || 0;
     const riskLevel = patientResults?.riskLevel?.toLowerCase() || 'unknown';
-    const eGFR = patientResults?.eGFR || 0;
-    const status = patientResults?.status?.toLowerCase() || 'unknown';
     
-    // Kidney disease stage based on eGFR
-    let stage = 'Unknown';
-    if (eGFR >= 90) stage = 'Stage 1 (Normal)';
-    else if (eGFR >= 60) stage = 'Stage 2 (Mild)';
-    else if (eGFR >= 45) stage = 'Stage 3a (Mild-Moderate)';
-    else if (eGFR >= 30) stage = 'Stage 3b (Moderate-Severe)';
-    else if (eGFR >= 15) stage = 'Stage 4 (Severe)';
-    else stage = 'Stage 5 (Kidney Failure)';
+    // Determine stage based on eGFR
+    let stage = 'normal';
+    if (eGFR >= 90) stage = 'Stage 1';
+    else if (eGFR >= 60) stage = 'Stage 2';
+    else if (eGFR >= 45) stage = 'Stage 3a';
+    else if (eGFR >= 30) stage = 'Stage 3b';
+    else stage = 'Stage 4-5';
     
-    // Generate personalized response based on keywords and patient status
-    if (lowerMessage.includes('diet') || lowerMessage.includes('food') || lowerMessage.includes('eat')) {
-        return generateDietAdvice(eGFR, stage);
-    } else if (lowerMessage.includes('exercise') || lowerMessage.includes('activity') || lowerMessage.includes('workout')) {
-        return generateExerciseAdvice(eGFR, stage);
-    } else if (lowerMessage.includes('medicine') || lowerMessage.includes('medication') || lowerMessage.includes('drug')) {
-        return generateMedicationAdvice(eGFR, stage);
-    } else if (lowerMessage.includes('water') || lowerMessage.includes('drink') || lowerMessage.includes('hydration')) {
-        return generateHydrationAdvice(eGFR, stage);
-    } else if (lowerMessage.includes('test') || lowerMessage.includes('check') || lowerMessage.includes('monitor')) {
-        return generateMonitoringAdvice(eGFR, stage);
-    } else if (lowerMessage.includes('what') && (lowerMessage.includes('can') || lowerMessage.includes('should'))) {
-        return generateGeneralAdvice(eGFR, stage);
-    } else if (lowerMessage.includes('avoid') || lowerMessage.includes('not') || lowerMessage.includes('don\'t')) {
-        return generateAvoidanceAdvice(eGFR, stage);
-    } else if (lowerMessage.includes('sodium') || lowerMessage.includes('salt')) {
-        return generateSodiumAdvice(eGFR, stage);
-    } else if (lowerMessage.includes('potassium') || lowerMessage.includes('banana')) {
-        return generatePotassiumAdvice(eGFR, stage);
-    } else if (lowerMessage.includes('protein')) {
-        return generateProteinAdvice(eGFR, stage);
-    } else if (lowerMessage.includes('tip') || lowerMessage.includes('help') || lowerMessage.includes('suggest')) {
-        return generatePersonalizedTips(eGFR, stage);
-    } else {
-        return generateGeneralResponse(eGFR, stage, userMessage);
-    }
-}
-
-/**
- * Generate diet advice personalized by kidney stage
- */
-function generateDietAdvice(eGFR, stage) {
-    let advice = '🥗 **Personalized Diet Recommendations**\n\n';
-    
-    if (eGFR >= 60) {
-        advice += `Based on your ${stage}, here are kidney-friendly diet tips:\n\n`;
-        advice += '✓ **DO:**\n';
-        advice += '- Eat fresh fruits and vegetables\n';
-        advice += '- Choose lean proteins (fish, chicken)\n';
-        advice += '- Use herbs instead of salt for flavoring\n';
-        advice += '- Drink plenty of water (typically 8-10 glasses/day)\n';
-        advice += '- Eat whole grains\n\n';
-        advice += '✗ **AVOID:**\n';
-        advice += '- Processed foods (high in sodium)\n';
-        advice += '- Cured meats\n';
-        advice += '- Sugary drinks\n';
-        advice += '- Excess salt\n\n';
-    } else {
-        advice += `For your ${stage}, stricter dietary control is important:\n\n`;
-        advice += '⚠️ **Important Restrictions:**\n';
-        advice += `- Limit protein intake (consult dietitian for exact amount)\n`;
-        advice += '- Reduce sodium to less than 2,300mg/day\n';
-        advice += '- Be cautious with potassium-rich foods\n';
-        advice += '- Limit phosphorus intake\n';
-        advice += '- Monitor fluid intake carefully\n\n';
-        advice += '**Best Foods for Advanced CKD:**\n';
-        advice += '- Cauliflower, cabbage, green beans\n';
-        advice += '- Apples, pears, grapes (low potassium fruits)\n';
-        advice += '- White rice, pasta\n';
-        advice += '- Low-protein bread\n\n';
+    // GREETING
+    if (lowerMessage.match(/^(hello|hi|hey|greet)/i)) {
+        return `👋 Hi there! I'm your kidney health assistant. I'm here to answer questions about kidney function, diet, exercise, medications, and lifestyle tips. What would you like to know?`;
     }
     
-    advice += '💡 **Pro Tip:** Consider consulting a renal dietitian for a personalized meal plan tailored to your specific needs.';
-    
-    return advice;
-}
+    // KIDNEY FUNCTION & eGFR - MAIN TOPIC
+    if (lowerMessage.match(/kidney.*function|egfr|glomerular|filtration/i)) {
+        if (eGFR > 0) {
+            const explanation = `
+Kidney function is measured by eGFR (estimated Glomerular Filtration Rate), which shows how well your kidneys are filtering waste from your blood.
 
-/**
- * Generate exercise advice
- */
-function generateExerciseAdvice(eGFR, stage) {
-    let advice = '💪 **Exercise & Physical Activity Guide**\n\n';
-    
-    if (eGFR >= 60) {
-        advice += '**You can engage in regular exercise!**\n\n';
-        advice += '✓ **Recommended Activities:**\n';
-        advice += '- Brisk walking (30 minutes, 5 days/week)\n';
-        advice += '- Swimming or water aerobics\n';
-        advice += '- Cycling\n';
-        advice += '- Yoga or tai chi\n';
-        advice += '- Resistance training (2-3 times/week)\n\n';
-    } else {
-        advice += '**Exercise is beneficial but needs to be monitored.**\n\n';
-        advice += '✓ **Safe Activities:**\n';
-        advice += '- Gentle walking (20-30 minutes)\n';
-        advice += '- Light stretching\n';
-        advice += '- Seated exercises\n';
-        advice += '- Tai chi\n\n';
-        advice += '⚠️ **Cautions:**\n';
-        advice += '- Avoid heavy weightlifting\n';
-        advice += '- Don\'t exercise if you feel unwell\n';
-        advice += '- Start slowly and increase gradually\n\n';
+**Your Current Status:**
+• eGFR: ${eGFR} mL/min/1.73m²
+• Stage: ${stage}
+
+**eGFR Scale:**
+• 90+: Normal kidney function
+• 60-89: Mild reduction
+• 45-59: Mild to moderate reduction
+• 30-44: Moderate to severe reduction
+• <30: Severe reduction (near kidney failure)
+
+**Why eGFR Matters:**
+Early detection through regular eGFR testing helps catch kidney disease before it becomes serious. It's the most important indicator of kidney health and guides all treatment decisions.
+
+Keep monitoring regularly and follow your doctor's recommendations! 💪`;
+            return explanation.trim();
+        } else {
+            return `eGFR (estimated Glomerular Filtration Rate) is the gold standard for measuring kidney function. It tells doctors how efficiently your kidneys are filtering waste.
+
+**eGFR Scale:**
+• 90+: Normal
+• 60-89: Mild reduction
+• 45-59: Mild-moderate reduction  
+• 30-44: Moderate-severe reduction
+• <30: Severe (kidney failure risk)
+
+Regular testing is crucial for early detection of kidney disease. If you haven't had your eGFR tested recently, ask your doctor for a simple blood test! 🩸`;
+        }
     }
     
-    advice += '💡 **General Guidelines:**\n';
-    advice += '- Aim for 150 minutes of moderate activity per week\n';
-    advice += '- Stay hydrated before, during, and after exercise\n';
-    advice += '- Warm up and cool down properly\n';
-    advice += '- Listen to your body and rest when needed\n';
-    advice += '- Consult your doctor before starting a new exercise program';
-    
-    return advice;
-}
+    // KIDNEY DISEASE SIGNS & SYMPTOMS
+    if (lowerMessage.match(/sign|symptom|warning|attention|problem|disease/i)) {
+        return `⚠️ **5 Common Signs Your Kidneys Need Attention:**
 
-/**
- * Generate medication advice
- */
-function generateMedicationAdvice(eGFR, stage) {
-    let advice = '💊 **Medication Guidance**\n\n';
-    
-    advice += `For your ${stage}:\n\n`;
-    advice += '✓ **Important Points:**\n';
-    advice += '- Always take medications exactly as prescribed\n';
-    advice += '- Keep all appointments to monitor medication effectiveness\n';
-    advice += '- Inform your doctor about all over-the-counter medications\n';
-    advice += '- Never skip doses without consulting your doctor\n\n';
-    
-    if (eGFR < 60) {
-        advice += '⚠️ **Special Considerations:**\n';
-        advice += '- Some medications need dose adjustments with reduced kidney function\n';
-        advice += '- NSAIDs (ibuprofen) should be avoided\n';
-        advice += '- Certain supplements may harm your kidneys\n';
-        advice += '- Always inform healthcare providers about kidney disease\n\n';
+1. **Swelling** - Puffiness in feet, ankles, hands, or face (fluid buildup)
+
+2. **Fatigue** - Unusual tiredness, weakness, difficulty concentrating (anemia from reduced erythropoietin)
+
+3. **Changes in Urination** - Less/more frequent urination, foamy/dark urine, or blood in urine
+
+4. **High Blood Pressure** - Consistent readings above 130/80 mmHg
+
+5. **Loss of Appetite** - Not feeling hungry, nausea, metallic taste
+
+**When to See a Doctor:**
+• Any of these symptoms appear
+• Unexplained weight gain
+• Back pain below ribs
+• Persistent headaches
+
+Early detection can slow kidney disease progression significantly! 🏥`;
     }
     
-    advice += '📋 **Common Kidney Disease Medications:**\n';
-    advice += '- ACE inhibitors (help reduce blood pressure)\n';
-    advice += '- ARBs (protect kidney function)\n';
-    advice += '- Diuretics (manage fluid and electrolytes)\n';
-    advice += '- Statins (reduce cholesterol)\n\n';
-    
-    advice += '💡 **Reminder:** Never change your medication without consulting your doctor.';
-    
-    return advice;
-}
+    // DIET & NUTRITION
+    if (lowerMessage.match(/diet|food|eat|nutrition|meal|nutrition|what.*eat/i)) {
+        if (eGFR >= 60) {
+            return `🥗 **Healthy Diet for Your Kidney Stage:**
 
-/**
- * Generate hydration advice
- */
-function generateHydrationAdvice(eGFR, stage) {
-    let advice = '💧 **Hydration Guidelines**\n\n';
-    
-    if (eGFR >= 60) {
-        advice += '**General recommendation: 8-10 glasses of water per day**\n\n';
-        advice += '✓ **Hydration Tips:**\n';
-        advice += '- Drink water throughout the day\n';
-        advice += '- Limit sugary and caffeinated beverages\n';
-        advice += '- Avoid excessive salt intake\n';
-        advice += '- Drink more in hot weather or during exercise\n\n';
-    } else {
-        advice += '**Fluid intake needs careful monitoring**\n\n';
-        advice += '⚠️ **Important:**\n';
-        advice += '- Consult your doctor about your daily fluid limit\n';
-        advice += '- May need to restrict fluids (often 1-2 liters/day)\n';
-        advice += '- Monitor for signs of fluid overload\n';
-        advice += '- Track urine output\n\n';
+**✅ EAT MORE:**
+• Fresh fruits: Apples, grapes, berries, watermelon
+• Vegetables: Carrots, broccoli, cabbage, cucumbers, lettuce
+• Lean proteins: Chicken, fish, eggs (moderate portions)
+• Whole grains: Brown rice, whole wheat bread
+• Healthy fats: Olive oil, avocado
+
+**⚠️ LIMIT:**
+• Salt & processed foods (high sodium)
+• Sugary drinks & sweets
+• Too much meat at one meal
+
+**💡 Tips:**
+• Cook at home to control sodium
+• Use herbs & spices instead of salt
+• Read food labels for sodium content
+• Keep meals balanced and colorful!
+
+Your kidney function is good - you have flexibility. Just stay mindful! 👍`;
+        } else {
+            return `🥗 **Renal Diet for Advanced Kidney Disease:**
+
+**✅ FOCUS ON:**
+• Low-sodium foods (<2000mg daily)
+• Limited protein (portion-controlled meats)
+• Phosphorus-controlled foods
+• Potassium-restricted foods
+
+**❌ AVOID:**
+• Bananas, oranges, tomatoes, potatoes (high potassium)
+• Processed meats, canned foods
+• Cheese, nuts, chocolate (high phosphorus)
+• Salt & salty snacks
+
+**💚 Safe Options:**
+• Apples, grapes, watermelon
+• Rice, pasta, white bread
+• Lean chicken, fish (small portions)
+• Green beans, carrots, cabbage
+
+**IMPORTANT:** Work with a renal dietitian to personalize your meal plan based on your lab values! They're your best resource. 👨‍⚕️`;
+        }
     }
     
-    advice += '💡 **Helpful Tips:**\n';
-    advice += '- Set reminders to drink water regularly\n';
-    advice += '- Limit drinks at bedtime\n';
-    advice += '- Use smaller glasses\n';
-    advice += '- Try herbal teas (caffeine-free)\n';
-    advice += '- Monitor your weight daily for fluid retention signs';
-    
-    return advice;
-}
+    // EXERCISE & ACTIVITY
+    if (lowerMessage.match(/exercise|activity|sport|fitness|workout|physical|movement/i)) {
+        if (eGFR >= 60) {
+            return `💪 **Exercise Plan for Healthy Kidneys:**
 
-/**
- * Generate monitoring advice
- */
-function generateMonitoringAdvice(eGFR, stage) {
-    let advice = '📊 **Testing & Monitoring Schedule**\n\n';
-    
-    advice += `Based on your current ${stage}:\n\n`;
-    
-    if (eGFR >= 60) {
-        advice += '✓ **Recommended Schedule:**\n';
-        advice += '- Annual kidney function tests\n';
-        advice += '- Annual blood pressure checks\n';
-        advice += '- Annual urine tests\n';
-        advice += '- Regular blood work\n\n';
-    } else if (eGFR >= 30) {
-        advice += '✓ **More Frequent Monitoring:**\n';
-        advice += '- Every 6 months: eGFR and creatinine tests\n';
-        advice += '- Every 3 months: urine protein levels\n';
-        advice += '- Monthly: blood pressure monitoring\n';
-        advice += '- As needed: additional blood work\n\n';
-    } else {
-        advice += '✓ **Regular Monitoring Essential:**\n';
-        advice += '- Every 3 months: comprehensive metabolic panel\n';
-        advice += '- Monthly: eGFR, creatinine, electrolytes\n';
-        advice += '- Frequent: blood pressure checks\n';
-        advice += '- Regular: discussions with nephrologist\n\n';
+**RECOMMENDED:**
+• Brisk walking: 30 mins, 5 days/week
+• Swimming or water aerobics
+• Cycling (stationary or outdoor)
+• Light strength training (2-3x/week)
+• Yoga or tai chi
+• Dancing or recreational sports
+
+**GUIDELINES:**
+✓ Warm up for 5-10 minutes
+✓ Exercise at moderate intensity
+✓ Stay hydrated throughout
+✓ Listen to your body
+✓ Rest on non-exercise days
+
+**BENEFITS:**
+• Controls blood pressure
+• Reduces kidney disease risk
+• Improves overall health
+• Boosts mood & energy
+
+Start slowly and build gradually. Consistency matters more than intensity! 🏃`;
+        } else {
+            return `💪 **Modified Exercise for Advanced Kidney Disease:**
+
+**SAFE OPTIONS:**
+• Light walking (20-30 mins daily)
+• Gentle stretching
+• Tai chi
+• Yoga (avoiding intense classes)
+• Water walking (no swimming)
+• Slow dancing
+
+**AVOID:**
+✗ Heavy weight lifting
+✗ Intense cardio/sprinting
+✗ Contact sports
+✗ Dehydrating activities
+
+**IMPORTANT RULES:**
+• Get doctor approval before starting
+• Stop if you feel dizzy or chest pain
+• Rest when you feel tired
+• Don't overexert yourself
+
+Even gentle movement helps! Consistency and listening to your body are key. Check with your nephrologist before changing your routine. 🏥`;
+        }
     }
     
-    advice += '💡 **What to Track:**\n';
-    advice += '- Blood pressure readings\n';
-    advice += '- Weight\n';
-    advice += '- Urine output\n';
-    advice += '- Lab results\n';
-    advice += '- Any new symptoms\n';
-    advice += '- Medication changes';
-    
-    return advice;
-}
+    // HYDRATION
+    if (lowerMessage.match(/drink|water|hydrat|fluid|beverage/i)) {
+        if (eGFR >= 60) {
+            return `💧 **Hydration for Healthy Kidneys:**
 
-/**
- * Generate potassium advice
- */
-function generatePotassiumAdvice(eGFR, stage) {
-    let advice = '🍌 **Potassium Management**\n\n';
-    
-    if (eGFR >= 60) {
-        advice += '**Potassium is essential for heart health.**\n\n';
-        advice += '✓ **High-Potassium Foods (Encouraged):**\n';
-        advice += '- Bananas\n';
-        advice += '- Oranges\n';
-        advice += '- Avocados\n';
-        advice += '- Spinach and dark leafy greens\n';
-        advice += '- Sweet potatoes\n\n';
-    } else {
-        advice += '**You may need to limit potassium intake.**\n\n';
-        advice += '⚠️ **Foods to Limit:**\n';
-        advice += '- Bananas (use smaller portions)\n';
-        advice += '- Orange juice\n';
-        advice += '- Avocados\n';
-        advice += '- Spinach\n';
-        advice += '- Tomatoes (high in potassium)\n';
-        advice += '- Nuts and seeds\n';
-        advice += '- Dried fruits\n\n';
-        advice += '✓ **Low-Potassium Alternatives:**\n';
-        advice += '- Apples and pears\n';
-        advice += '- Grapes\n';
-        advice += '- Green beans\n';
-        advice += '- Cucumber\n';
-        advice += '- Cabbage\n\n';
+**DAILY INTAKE:**
+• 8-10 glasses of water daily (standard recommendation)
+• More if you exercise or live in hot climate
+• Less if your doctor advises otherwise
+
+**BEST CHOICES:**
+✅ Water (best option)
+✅ Herbal teas (no caffeine)
+✅ Low-sugar drinks
+
+**AVOID:**
+❌ Sugary sodas & energy drinks
+❌ Too much caffeine
+❌ Alcohol (limit to moderate amounts)
+
+**HYDRATION TIPS:**
+💡 Drink throughout the day, not all at once
+💡 Check urine color - pale yellow = well hydrated
+💡 Drink when thirsty
+💡 More water = cleaner kidneys!
+
+Proper hydration supports kidney function! 🌊`;
+        } else {
+            return `💧 **Fluid Management for Advanced Kidney Disease:**
+
+**⚠️ IMPORTANT:** Your doctor should have given you a specific fluid limit. FOLLOW IT STRICTLY!
+
+**WHY LIMIT FLUIDS:**
+• Reduced kidney function can't remove excess fluid
+• Causes swelling, high blood pressure
+• Strains your heart
+
+**TIPS TO MANAGE LIMITS:**
+• Measure all fluids (water, milk, soup, coffee)
+• Use smaller cups
+• Suck on ice chips (counts as fluid)
+• Avoid salty foods (makes you thirsty)
+• Rinse mouth instead of drinking
+
+**INCLUDE IN COUNT:**
+• Water, juice, milk, soup
+• Ice cream, pudding, jello
+• Fruits with high water content
+
+**If unsure about your limit:** Ask your nephrologist or dietitian immediately! They'll help you stay within safe amounts. 🏥`;
+        }
     }
     
-    advice += '💡 **Always consult your doctor or dietitian about safe potassium levels for your condition.';
-    
-    return advice;
-}
+    // SODIUM/SALT
+    if (lowerMessage.match(/sodium|salt|salty|high.*salt/i)) {
+        return `🧂 **Sodium Control for Kidney Health:**
 
-/**
- * Generate sodium advice
- */
-function generateSodiumAdvice(eGFR, stage) {
-    let advice = '🧂 **Sodium Reduction Tips**\n\n';
-    
-    advice += `For your ${stage}, limiting sodium is important:\n\n`;
-    advice += '✓ **Ways to Reduce Salt:**\n';
-    advice += '- Use herbs and spices for flavoring\n';
-    advice += '- Avoid processed foods\n';
-    advice += '- Don\'t add salt during cooking\n';
-    advice += '- Limit canned foods\n';
-    advice += '- Choose fresh over processed meat\n';
-    advice += '- Read food labels (aim for <2,300mg sodium/day)\n\n';
-    advice += '⚠️ **Hidden Sodium Sources:**\n';
-    advice += '- Bread and rolls\n';
-    advice += '- Deli meats\n';
-    advice += '- Canned soups\n';
-    advice += '- Soy sauce\n';
-    advice += '- Cheese\n';
-    advice += '- Condiments\n\n';
-    advice += '💡 **Cooking Tips:**\n';
-    advice += '- Prepare meals at home\n';
-    advice += '- Rinse canned vegetables\n';
-    advice += '- Use potassium-based salt substitutes (with doctor approval)';
-    
-    return advice;
-}
+**DAILY LIMIT:**
+• Under 2,300mg daily (ideal: <1,500mg)
+• Check with doctor for your specific limit
 
-/**
- * Generate protein advice
- */
-function generateProteinAdvice(eGFR, stage) {
-    let advice = '🥚 **Protein Intake Guidelines**\n\n';
-    
-    if (eGFR >= 60) {
-        advice += '**Protein is important, but choose wisely.**\n\n';
-        advice += '✓ **Best Protein Sources:**\n';
-        advice += '- Fish (2-3 times per week)\n';
-        advice += '- Chicken or turkey\n';
-        advice += '- Eggs\n';
-        advice += '- Legumes (beans, lentils)\n';
-        advice += '- Low-fat dairy\n\n';
-    } else {
-        advice += '**Protein intake needs to be carefully controlled.**\n\n';
-        advice += '⚠️ **Important:**\n';
-        advice += '- Excess protein increases kidney workload\n';
-        advice += '- Your doctor will determine the right amount\n';
-        advice += '- Consult a renal dietitian\n\n';
-        advice += '✓ **Better Options:**\n';
-        advice += '- Smaller portions of lean protein\n';
-        advice += '- Fish over red meat\n';
-        advice += '- Plant-based proteins (limited)\n';
-        advice += '- Egg whites\n\n';
+**MAJOR SODIUM SOURCES:**
+🍔 Processed foods (largest culprit!)
+🥫 Canned foods
+🍕 Restaurant meals
+🥓 Processed meats
+🥨 Salty snacks
+🍞 Bread products
+
+**HOW TO REDUCE:**
+✓ Cook at home (control salt)
+✓ Use fresh ingredients
+✓ Rinse canned foods (reduces sodium 30%)
+✓ Use herbs & spices: garlic, lemon, ginger
+✓ Skip the salt shaker
+✓ Read food labels carefully
+✓ Choose "low-sodium" options
+
+**TASTE BUDS ADAPT:**
+After 2-3 weeks, your taste buds adjust and food tastes normal without salt! 
+
+Lower sodium = lower blood pressure = healthier kidneys! 👍`;
     }
     
-    advice += '💡 **Remember:** Talk to your healthcare team about the right protein amount for your kidney function level.';
-    
-    return advice;
-}
+    // POTASSIUM
+    if (lowerMessage.match(/potassium|banana|potato|tomato|orange/i)) {
+        if (eGFR >= 60) {
+            return `🍌 **Potassium & Your Kidneys:**
 
-/**
- * Generate avoidance advice
- */
-function generateAvoidanceAdvice(eGFR, stage) {
-    let advice = '🛑 **What to Avoid for Kidney Health**\n\n';
-    
-    advice += '⚠️ **Medications & Substances to Avoid:**\n';
-    advice += '- NSAIDs (ibuprofen, naproxen)\n';
-    advice += '- Excess alcohol\n';
-    advice += '- High-dose supplements\n';
-    advice += '- ACE inhibitors without doctor guidance\n\n';
-    
-    advice += '⚠️ **Foods to Avoid or Limit:**\n';
-    advice += '- Processed and canned foods\n';
-    advice += '- Sugary drinks\n';
-    advice += '- Salt-laden snacks\n';
-    advice += '- Fast food\n';
-    advice += '- Fatty meats\n';
-    advice += '- Excess caffeine\n\n';
-    
-    if (eGFR < 60) {
-        advice += '⚠️ **Additional Restrictions:**\n';
-        advice += `- Certain potassium-rich foods\n`;
-        advice += '- High-phosphorus foods\n';
-        advice += '- Excess fluid intake\n\n';
+**GOOD NEWS:** With your kidney function, you can enjoy most potassium-rich foods!
+
+**POTASSIUM-RICH FOODS YOU CAN EAT:**
+✅ Bananas, oranges, strawberries
+✅ Potatoes, sweet potatoes
+✅ Tomatoes, tomato sauce
+✅ Beans, lentils
+✅ Spinach, broccoli
+✅ Nuts & seeds
+✅ Avocado, coconut water
+
+**GUIDELINES:**
+• Eat varied fruits & vegetables
+• Include potassium-rich foods naturally
+• Don't need to restrict these foods
+
+Keep enjoying a balanced, colorful diet! 🌈`;
+        } else {
+            return `⚠️ **Potassium Restrictions for Advanced Kidney Disease:**
+
+With reduced kidney function, potassium can build up to dangerous levels. It's CRITICAL to manage this!
+
+**HIGH POTASSIUM - AVOID:**
+❌ Bananas, oranges, avocado
+❌ Potatoes, sweet potatoes
+❌ Tomatoes & tomato sauce
+❌ Beans, lentils, nuts
+❌ Spinach, kale
+❌ Dried fruits
+❌ Coconut water
+❌ Sports drinks
+
+**LOWER POTASSIUM - SAFE:**
+✅ Apples, grapes, watermelon
+✅ Rice, pasta, white bread
+✅ Carrots, green beans, cabbage
+✅ Chicken, fish (lean)
+✅ Regular milk (portion controlled)
+
+**PRO TIP:** Boil and discard potato/vegetable water to reduce potassium!
+
+**ESSENTIAL:** Work with your dietitian for your exact potassium targets based on blood tests! 👩‍⚕️`;
+        }
     }
     
-    advice += '💡 **Pro Tip:** Keep a food diary to track what affects your health.';
-    
-    return advice;
-}
+    // PROTEIN
+    if (lowerMessage.match(/protein|meat|chicken|fish|egg|dairy/i)) {
+        if (eGFR >= 60) {
+            return `🥚 **Protein for Healthy Kidneys:**
 
-/**
- * Generate personalized tips
- */
-function generatePersonalizedTips(eGFR, stage) {
-    let advice = '⭐ **Personalized Health Tips for You**\n\n';
-    
-    advice += `Based on your ${stage}:\n\n`;
-    
-    if (eGFR >= 90) {
-        advice += '✓ **Your kidneys are functioning well. Focus on prevention:**\n';
-        advice += '- Maintain a healthy diet and exercise regularly\n';
-        advice += '- Keep blood pressure under control\n';
-        advice += '- Manage weight\n';
-        advice += '- Avoid smoking\n';
-        advice += '- Limit alcohol\n';
-        advice += '- Stay hydrated\n';
-        advice += '- Get annual check-ups\n\n';
-    } else if (eGFR >= 60) {
-        advice += '✓ **Your kidney function is mildly reduced. Key actions:**\n';
-        advice += '- Monitor kidney function every 6-12 months\n';
-        advice += '- Maintain healthy blood pressure (<130/80)\n';
-        advice += '- Keep balanced diet with moderate sodium\n';
-        advice += '- Exercise regularly\n';
-        advice += '- Control diabetes if present\n';
-        advice += '- Avoid NSAIDs\n';
-        advice += '- Regular medical follow-ups\n\n';
-    } else if (eGFR >= 30) {
-        advice += '⚠️ **Your kidney disease is moderate. Important steps:**\n';
-        advice += '- See a nephrologist regularly (every 3-4 months)\n';
-        advice += '- Strict blood pressure control\n';
-        advice += '- Limit sodium significantly\n';
-        advice += '- Monitor protein intake carefully\n';
-        advice += '- Restrict potassium as needed\n';
-        advice += '- Regular lab tests\n';
-        advice += '- Consider nephrology referral\n';
-        advice += '- Prepare for possible future treatments\n\n';
-    } else {
-        advice += '⚠️ **Your kidney function is severely reduced. Critical care needed:**\n';
-        advice += '- Frequent nephrologist visits (monthly or more)\n';
-        advice += '- Strict dietary restrictions\n';
-        advice += '- Close fluid management\n';
-        advice += '- Blood work every month\n';
-        advice += '- Prepare for dialysis or transplant\n';
-        advice += '- Manage related conditions (anemia, blood pressure)\n';
-        advice += '- Emotional and family support\n\n';
+**PROTEIN NEEDS:** 
+Your kidneys are healthy - standard protein intake is fine!
+
+**BEST PROTEIN SOURCES:**
+✅ Lean meats: chicken, turkey, fish
+✅ Eggs
+✅ Low-fat dairy: milk, yogurt, cheese
+✅ Plant proteins: tofu, beans, lentils
+
+**PORTION GUIDELINES:**
+• 3-4 ounces per meal (size of deck of cards)
+• Don't overload at any meal
+• Spread protein throughout the day
+
+**VARIETY IS KEY:**
+Mix fish (omega-3s), chicken, and plant proteins for optimal health!
+
+Protein is important - just keep portions reasonable! 💪`;
+        } else {
+            return `🥚 **Protein Management for Advanced Kidney Disease:**
+
+**WHY LIMIT PROTEIN:**
+• Damaged kidneys can't filter protein breakdown products
+• Too much protein stresses kidneys further
+
+**PROTEIN LIMITS:**
+• Usually 40-60g daily (ask your doctor)
+• Less protein = less kidney workload
+
+**PROTEIN CHOICES:**
+✅ Fish (2-3x/week) - contains omega-3s
+✅ Lean chicken (small portions)
+✅ Eggs (limit to 3-4/week)
+✅ Low-phosphorus options
+
+**REDUCE:**
+❌ Red meat & processed meats
+❌ Too much dairy/cheese
+❌ Nuts & seeds (high phosphorus)
+
+**COOKING TIPS:**
+• Use small portions (3 ounces)
+• Cook with herbs instead of salt
+• Trim visible fat
+
+**CRITICAL:** Your nephrologist/dietitian should calculate YOUR exact protein needs based on lab values! This is personalized based on your stage. 👨‍⚕️`;
+        }
     }
     
-    advice += '🏥 **Always maintain regular contact with your healthcare team!**';
-    
-    return advice;
-}
+    // MONITORING & TESTING
+    if (lowerMessage.match(/monitor|check|test|lab|how often|schedule/i)) {
+        return `📊 **Regular Monitoring Schedule:**
 
-/**
- * Generate general advice
- */
-function generateGeneralAdvice(eGFR, stage) {
-    let advice = '📋 **General Kidney Health Advice**\n\n';
-    
-    advice += `Your Current Status: ${stage}\n\n`;
-    advice += '✓ **Key Recommendations:**\n';
-    advice += '- Monitor kidney function regularly\n';
-    advice += '- Keep blood pressure below 130/80 mmHg\n';
-    advice += '- Eat a kidney-friendly diet\n';
-    advice += '- Stay physically active\n';
-    advice += '- Avoid smoking and excessive alcohol\n';
-    advice += '- Manage diabetes and other conditions\n';
-    advice += '- Stay hydrated appropriately\n';
-    advice += '- Take medications as prescribed\n\n';
-    advice += '💡 **Need More Information?**\n';
-    advice += 'Ask me about: diet, exercise, medications, testing, what to avoid, potassium, sodium, protein, or any specific concern!';
-    
-    return advice;
-}
+${eGFR >= 60 ? `**For Stage 1-2:**
+• Annual check-ups
+• Yearly eGFR & creatinine test
+• Annual blood pressure monitoring
+• Urine protein test yearly` : `**For Advanced Stages:**
+• Every 3-6 months: Doctor visits
+• Monthly or quarterly: Blood work
+• Frequent: Blood pressure checks
+• Regular: Urine protein monitoring`}
 
-/**
- * Generate general response
- */
-function generateGeneralResponse(eGFR, stage, userMessage) {
-    return `I'm here to help with kidney health information for your ${stage}. 
-    
-Based on your test results, I can provide personalized advice on:
-- **Diet**: kidney-friendly foods and restrictions
-- **Exercise**: safe physical activities
-- **Medications**: usage and precautions  
-- **Hydration**: proper fluid intake
-- **Monitoring**: testing schedules
-- **Lifestyle**: tips for kidney health
+**HOME MONITORING:**
+✓ Blood pressure (weekly or as instructed)
+✓ Weight (daily)
+✓ Swelling in legs/ankles
+✓ Urine changes
+✓ Energy & appetite levels
+✓ Medication adherence
 
-Feel free to ask about any of these topics or let me know if you have other concerns about your kidney health!`;
+**WHAT TO TRACK:**
+• eGFR trend (stable or declining?)
+• Creatinine levels
+• Blood pressure readings
+• Weight changes
+• Symptom journal
+
+**TOOLS:**
+📱 Apps for blood pressure tracking
+📓 Health journal for symptoms
+📅 Calendar for appointment reminders
+
+Consistent monitoring helps catch problems early! 🏥`;
+    }
+    
+    // PREVENTION & IMPROVEMENT
+    if (lowerMessage.match(/improve|prevent|better|slow down|progress|manage|control/i)) {
+        return `📈 **Action Plan to Prevent Kidney Disease Progression:**
+
+**DIET:**
+• Follow your kidney-friendly meal plan
+• Control sodium, phosphorus, potassium
+• Manage protein intake
+• Stay hydrated appropriately
+
+**BLOOD PRESSURE:**
+• Keep it below 130/80 mmHg
+• Take medications as prescribed
+• Reduce sodium intake
+• Manage stress
+
+**MEDICATIONS:**
+• Take ALL meds exactly as prescribed
+• Don't skip doses
+• Blood pressure meds (ACE inhibitors/ARBs often recommended)
+• Other meds for specific conditions
+
+**LIFESTYLE:**
+• Regular gentle exercise
+• Maintain healthy weight
+• Don't smoke (or quit if you do)
+• Limit alcohol
+• Manage stress
+
+**MONITORING:**
+• Regular doctor visits
+• Blood work as scheduled
+• Home blood pressure checks
+• Track symptoms daily
+
+**IMPORTANT CONTACTS:**
+👨‍⚕️ Nephrologist (kidney specialist)
+👩‍⚕️ Renal dietitian
+📞 Your primary care doctor
+
+Small consistent changes slow disease progression! You're taking the right steps! 💪`;
+    }
+    
+    // KIDNEY STONES
+    if (lowerMessage.match(/stone|pain|sharp|severe/i)) {
+        return `🪨 **Kidney Stones - Prevention & Management:**
+
+**SYMPTOMS (See doctor immediately!):**
+• Severe pain in back/side below ribs
+• Blood in urine
+• Nausea & vomiting
+• Burning urination
+• Frequent urination
+
+**PREVENTION:**
+✓ Drink 2-3 liters water daily
+✓ Limit sodium & animal protein
+✓ Limit high-oxalate foods (spinach, nuts)
+✓ Maintain healthy weight
+✓ Regular exercise
+
+**SAFE FOODS:**
+• Lemon & citrus (prevent stones)
+• Low-sodium options
+• Lean proteins in moderation
+
+**IF YOU HAVE A STONE:**
+• Drink plenty of water
+• Pain management as directed
+• Seek immediate medical care
+• Imaging (ultrasound, CT scan) may be needed
+
+Kidney stones are very treatable. Early detection is key! 🏥`;
+    }
+    
+    // MEDICATIONS
+    if (lowerMessage.match(/medication|medicine|pill|drug|prescription|pharma/i)) {
+        return `💊 **Medications for Kidney Health:**
+
+**COMMON KIDNEY MEDICATIONS:**
+
+**Blood Pressure Control:**
+• ACE inhibitors (lisinopril, enalapril)
+• ARBs (losartan, valsartan)
+• Diuretics
+• Beta-blockers
+• Calcium channel blockers
+
+**Kidney Disease Management:**
+• Phosphate binders (if needed)
+• Vitamin D supplements
+• Erythropoiesis-stimulating agents (for anemia)
+• Iron supplements
+
+**IMPORTANT RULES:**
+✅ Take exactly as prescribed
+✅ Don't skip doses
+✅ Take at same time daily
+✅ Tell doctor about all supplements
+✅ Ask about side effects
+✅ Never stop without doctor approval
+
+**SIDE EFFECTS:**
+Report to doctor: Dizziness, excessive tiredness, swelling, shortness of breath
+
+Your medications protect your kidneys - consistency is crucial! 👨‍⚕️`;
+    }
+    
+    // GENERAL SUPPORT
+    if (lowerMessage.match(/worry|concern|afraid|stress|help|support/i)) {
+        return `💚 **You're Not Alone in This:**
+
+Millions of people manage kidney disease successfully every day. You're taking the right steps by:
+• Monitoring your health
+• Seeking information
+• Following medical advice
+• Making lifestyle changes
+
+**SUPPORT RESOURCES:**
+👥 Kidney disease support groups (online & local)
+📱 Health apps for tracking
+👨‍⚕️ Your medical team (ask for help!)
+👨‍⚩ Family & friends support
+📚 Educational resources
+
+**POSITIVE REMINDERS:**
+✨ Early detection changes outcomes
+✨ Lifestyle changes slow progression
+✨ Modern treatments are very effective
+✨ You have control over many factors
+✨ Regular monitoring gives peace of mind
+
+Many people with kidney disease live full, healthy lives with proper management! 
+
+**Immediate concerns?** Contact your doctor or nephrologist right away. 💙`;
+    }
+    
+    // DEFAULT RESPONSE
+    const defaults = [
+        `That's a great question! 🤔 Are you asking about:
+• Kidney function & testing?
+• Diet & nutrition?
+• Exercise & activity?
+• Medications?
+• Symptoms or monitoring?
+
+Let me know the topic and I'll give you detailed info! 😊`,
+        
+        `I'm here to help! 💙 I can explain:
+• What kidney disease is and stages
+• How to eat for kidney health
+• Exercise & lifestyle tips
+• Medication management
+• When to see a doctor
+
+What would you like to know more about?`,
+        
+        `Good question! 👍 Tell me more about what interests you:
+• Understanding your test results?
+• Tips for daily kidney health?
+• Specific dietary concerns?
+• Exercise recommendations?
+• General kidney health info?
+
+I'll give you comprehensive, clear answers! 📊`
+    ];
+    
+    return defaults[Math.floor(Math.random() * defaults.length)];
 }
 
 // WebSocket connection handling
@@ -1024,13 +1834,24 @@ function broadcastMessage(message) {
 // Simulate sensor data for demonstration
 function simulateSensorData() {
     const sensorData = {
-        // Kidney Monitoring Sensors (New Setup - ECG HR, Temperature, SpO2)
-        heartRate: parseInt(60 + Math.random() * 40),  // 60-100 BPM
-        temperature: parseFloat((36.0 + Math.random() * 2).toFixed(1)),  // 36-38°C
-        spo2: parseFloat((95 + Math.random() * 5).toFixed(1)),  // 95-100% SpO2
-        battery: parseInt(70 + Math.random() * 30)  // Battery percentage
+        bioimpedance: {
+            '1khz': (400 + Math.random() * 100).toFixed(0),
+            '10khz': (370 + Math.random() * 100).toFixed(0),
+            '100khz': (330 + Math.random() * 100).toFixed(0),
+            '200khz': (300 + Math.random() * 100).toFixed(0)
+        },
+        optical: {
+            red: (600 + Math.random() * 100).toFixed(0),
+            ir: (900 + Math.random() * 100).toFixed(0),
+            green: (500 + Math.random() * 50).toFixed(0)
+        },
+        temperature: (36.0 + Math.random() * 2).toFixed(1),
+        heartRate: (60 + Math.random() * 40).toFixed(0),
+        motion: (5 + Math.random() * 50).toFixed(0),
+        pressure: (100 + Math.random() * 3).toFixed(1),
+        battery: (70 + Math.random() * 30).toFixed(0)
     };
-
+    
     broadcastMessage({
         type: 'sensor_update',
         payload: sensorData
@@ -1124,140 +1945,125 @@ function simulateTestProgress() {
     }
 }
 
-// Start the server
-const HOST = 'localhost';  // Listen on localhost for local development
-
-server.listen(PORT, HOST, () => {
-    // Get the IP address for displaying to users
-    const os = require('os');
-    const interfaces = os.networkInterfaces();
-    let ipAddress = 'localhost';
-    
-    // Priority: Use environment variable, then find network IP, then localhost
-    if (process.env.SERVER_IP) {
-        ipAddress = process.env.SERVER_IP;
-    } else {
-        // Find the first non-loopback IPv4 address
-        for (const name of Object.keys(interfaces)) {
-            for (const iface of interfaces[name]) {
-                if (iface.family === 'IPv4' && !iface.internal) {
-                    ipAddress = iface.address;
-                    break;
+// Start the server (with optional MySQL initialization)
+async function startServer() {
+    try {
+        // If DB env is provided prefer MySQL module
+        if (process.env.DB_HOST || process.env.DB_USER || process.env.DB_NAME) {
+            try {
+                const dbMysql = require('./db-mysql');
+                if (dbMysql.initializeDatabase) {
+                    console.log('Initializing MySQL database...');
+                    await dbMysql.initializeDatabase();
                 }
+
+                // Rebind DB functions to use MySQL implementation
+                dbModule = dbMysql;
+                db = dbModule.db || db;
+                createUser = dbModule.createUser || createUser;
+                getUserByEmail = dbModule.getUserByEmail || getUserByEmail;
+                getUserById = dbModule.getUserById || getUserById;
+                verifyPassword = dbModule.verifyPassword || verifyPassword;
+                saveMedicalTest = dbModule.saveMedicalTest || saveMedicalTest;
+                saveTestResults = dbModule.saveTestResults || saveTestResults;
+                getUserTests = dbModule.getUserTests || getUserTests;
+                saveRecommendation = dbModule.saveRecommendation || saveRecommendation;
+                getTestRecommendations = dbModule.getTestRecommendations || getTestRecommendations;
+                saveChatMessage = dbModule.saveChatMessage || saveChatMessage;
+                getSessionHistory = dbModule.getSessionHistory || getSessionHistory;
+                createHealthAlert = dbModule.createHealthAlert || createHealthAlert;
+                getUserAlerts = dbModule.getUserAlerts || getUserAlerts;
+                markAlertAsRead = dbModule.markAlertAsRead || markAlertAsRead;
+                getDatabaseStats = dbModule.getDatabaseStats || getDatabaseStats;
+                console.log('Using MySQL database module');
+            } catch (err) {
+                console.error('Failed to initialize MySQL module, falling back to file DB:', err.message || err);
             }
-            if (ipAddress !== 'localhost') break;
         }
+
+        // Get the IP address for displaying to users
+        const os = require('os');
+        const interfaces = os.networkInterfaces();
+        let ipAddress = 'localhost';
+
+        // Priority: Use environment variable, then find network IP, then localhost
+        if (process.env.SERVER_IP) {
+            ipAddress = process.env.SERVER_IP;
+        } else {
+            // Find the first non-loopback IPv4 address
+            for (const name of Object.keys(interfaces)) {
+                for (const iface of interfaces[name]) {
+                    if (iface.family === 'IPv4' && !iface.internal) {
+                        ipAddress = iface.address;
+                        break;
+                    }
+                }
+                if (ipAddress !== 'localhost') break;
+            }
+        }
+
+        // Get ML API configuration from environment variables
+        const ML_API_IP = process.env.ML_API_IP || ipAddress;
+        const ML_API_PORT = process.env.ML_API_PORT || 5000;
+
+        server.listen(PORT, '0.0.0.0', () => {
+            console.log(`\n========================================`);
+            console.log(`Server running on http://${ipAddress}:${PORT}`);
+            console.log(`WebSocket server running on ws://${ipAddress}:${PORT}`);
+            console.log(`Local: http://localhost:${PORT}`);
+            console.log(`ML API: http://${ML_API_IP}:${ML_API_PORT}`);
+            console.log(`========================================\n`);
+
+            // Create a config file that clients can use
+            const fs = require('fs');
+            const config = {
+                serverIP: ipAddress,
+                serverPort: PORT,
+                mlApiIP: ML_API_IP,
+                mlApiPort: parseInt(ML_API_PORT),
+                timestamp: new Date().toISOString()
+            };
+
+            fs.writeFileSync(
+                path.join(__dirname, 'public', 'config.json'),
+                JSON.stringify(config, null, 2)
+            );
+        });
+
+    } catch (error) {
+        console.error('Failed to start server:', error);
+        process.exit(1);
     }
-    
-    // Get ML API configuration from environment variables
-    // Important: ML API should be on the same network IP as the server
-    const ML_API_IP = process.env.ML_API_IP || ipAddress;
-    const ML_API_PORT = process.env.ML_API_PORT || 5000;
-    
-    console.log(`\n========================================`);
-    console.log(`Server running on http://${ipAddress}:${PORT}`);
-    console.log(`WebSocket server running on ws://${ipAddress}:${PORT}`);
-    console.log(`Local: http://localhost:${PORT}`);
-    console.log(`ML API: http://${ML_API_IP}:${ML_API_PORT}`);
-    console.log(`========================================\n`);
-    
-    // Create a config file that clients can use
-    const fs = require('fs');
-    const config = {
-        serverIP: ipAddress,
-        serverPort: PORT,
-        mlApiIP: ML_API_IP,
-        mlApiPort: parseInt(ML_API_PORT),
-        timestamp: new Date().toISOString()
-    };
-    
-    fs.writeFileSync(
-        path.join(__dirname, 'public', 'config.json'),
-        JSON.stringify(config, null, 2)
-    );
-});
+}
+
+startServer();
 
 // Start a new test when server starts
-console.log('🔧 Initializing test simulator...');
-startNewTest();
+// startNewTest();  // Commented out - let clients trigger tests manually
 
 // Simulate data for demonstration (in a real app, this would come from ESP32)
-console.log('⏱️ Starting data simulation interval...');
-const simulationInterval = setInterval(() => {
-    try {
-        simulateSensorData();
-        simulateTestProgress();
-    } catch (error) {
-        console.error('❌ Error in simulation:', error.message);
-    }
+setInterval(() => {
+    simulateSensorData();
+    simulateTestProgress();
 }, 1000);
 
-console.log('✅ Server fully initialized and running!');
-
-// Add server heartbeat to keep it alive
-let heartbeatCount = 0;
-const heartbeatInterval = setInterval(() => {
-    heartbeatCount++;
-    const timestamp = new Date().toLocaleTimeString();
-    console.log(`💓 Heartbeat ${heartbeatCount} - Server alive at ${timestamp}`);
-    
-    // Check if server is still listening
-    if (server.listening) {
-        console.log('  ✓ Server is listening on port ${PORT}');
-    } else {
-        console.error('  ❌ WARNING: Server is NOT listening!');
-    }
-}, 30000); // Every 30 seconds
-
-// Prevent interval from keeping process alive indefinitely
-heartbeatInterval.unref();
-
-// Handle uncaught errors
-process.on('uncaughtException', (error) => {
-    console.error('❌ Uncaught Exception:', error.message);
-    console.error(error.stack);
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-    console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
-});
-
-// Graceful shutdown handler - only on explicit Ctrl+C (3 seconds of no activity)
-let lastActivityTime = Date.now();
-setInterval(() => {
-    const timeSinceLastActivity = Date.now() - lastActivityTime;
-    if (timeSinceLastActivity > 120000) { // 2 minutes
-        console.log('⏱️ No activity for 2 minutes, server still running...');
-        lastActivityTime = Date.now();
-    }
-}, 10000);
-
+// Handle graceful shutdown
 process.on('SIGINT', () => {
-    console.log('\n\n⛔ SIGINT Signal received - shutting down gracefully');
-    console.log('Closing all connections...');
+    console.log('Shutting down server...');
     
     // Close all WebSocket connections
     clients.forEach(client => {
-        try {
-            client.close();
-        } catch (e) {}
+        client.close();
     });
     
     // Close WebSocket server
     wss.close(() => {
-        console.log('✓ WebSocket server closed');
+        console.log('WebSocket server closed');
     });
     
     // Close HTTP server
     server.close(() => {
-        console.log('✓ HTTP server closed');
-        console.log('⏹️ Server shutdown complete');
+        console.log('HTTP server closed');
         process.exit(0);
     });
-    
-    // Force exit after 10 seconds if not graceful
-    setTimeout(() => {
-        console.error('⚠️ Forcing shutdown after timeout...');
-        process.exit(1);
-    }, 10000);
 });

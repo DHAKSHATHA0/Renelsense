@@ -1,0 +1,21 @@
+{
+  "users": [
+    {
+      "id": "2afaeda4-6505-4a23-b80a-f624b538283d",
+      "firstName": "abi",
+      "lastName": "s",
+      "email": "abi@gmail.com",
+      "phone": "1234567890",
+      "passwordHash": "de46ed2500c10211b275b51de519f36ea8aa15df1e9c5858186a6aedb738e665",
+      "createdAt": "2026-06-12T09:14:03.481Z",
+      "medicalHistory": {},
+      "testResults": [],
+      "reports": []
+    }
+  ],
+  "medicalTests": [],
+  "testResults": [],
+  "recommendations": [],
+  "chatMessages": [],
+  "healthAlerts": []
+}

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Assistant - Kidney Health Guide</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/ai-assistant.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="main-header">
+        <div class="container header-container">
+            <div class="logo-wrapper">
+                <div class="logo-icon">
+                    <img src="images/logo.jpeg" alt="Renal Sense Logo">
+                </div>
+                <h1 class="project-name">Renal Sense</h1>
+            </div>
+            <nav class="main-nav">
+                <ul>
+                    <li><a href="index.html" class="nav-link">Home</a></li>
+                    <li><a href="ai-assistant.html" class="nav-link active">AI Assistant</a></li>
+                    <li><a href="javascript:logout();" class="nav-link">Logout</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <!-- AI Assistant Container -->
+    <div class="ai-assistant-container">
+        <div class="ai-wrapper">
+            <!-- Left Sidebar - Chat History -->
+            <div class="chat-sidebar">
+                <div class="sidebar-header">
+                    <h3>Chat History</h3>
+                    <button id="newChatBtn" class="btn-new-chat">
+                        <i class="fas fa-plus"></i> New Chat
+                    </button>
+                </div>
+                <div class="chat-history-list" id="chatHistoryList">
+                    <!-- Chat history items will be populated here -->
+                </div>
+            </div>
+
+            <!-- Main Chat Area -->
+            <div class="chat-main">
+                <!-- Chat Header -->
+                <div class="chat-header">
+                    <h2 id="chatTitle">AI Health Assistant</h2>
+                    <div class="header-actions">
+                        <button id="exportChatBtn" class="btn-icon" title="Export Chat">
+                            <i class="fas fa-download"></i>
+                        </button>
+                        <button id="deleteChatBtn" class="btn-icon" title="Delete Chat">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Messages Container -->
+                <div class="chat-messages" id="chatMessages">
+                    <div class="message bot-message welcome-message">
+                        <div class="message-content">
+                            <h3>Welcome to AI Health Assistant</h3>
+                            <p>I'm here to help you understand your test results and answer health-related questions about kidney disorders.</p>
+                            <div class="suggestion-chips">
+                                <button class="chip" onclick="sendMessage('Explain my kidney test results')">Explain test results</button>
+                                <button class="chip" onclick="sendMessage('What is chronic kidney disease?')">About kidney disease</button>
+                                <button class="chip" onclick="sendMessage('Download my chat history')">Download chat</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Input Area -->
+                <div class="chat-input-area">
+                    <form id="chatForm" onsubmit="handleChatSubmit(event)">
+                        <div class="input-wrapper">
+                            <input 
+                                type="text" 
+                                id="chatInput" 
+                                placeholder="Ask me anything about your health..." 
+                                autocomplete="off"
+                                required
+                            >
+                            <button type="submit" class="btn-send">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                        <small>AI Assistant powered by health knowledge base</small>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script src="js/ai-assistant.js"></script>
+</body>
+</html>

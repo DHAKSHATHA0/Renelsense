@@ -36,14 +36,10 @@ async function initLiveTest() {
 function selectGender(gender) {
     selectedGender = gender;
     document.querySelectorAll('.gender-btn').forEach(btn => {
-        btn.style.background = 'white';
-        btn.style.borderColor = '#ddd';
-        btn.style.color = '#333';
+        btn.classList.remove('selected');
     });
     const selectedBtn = document.querySelector(`[data-gender="${gender}"]`);
-    selectedBtn.style.background = '#667eea';
-    selectedBtn.style.borderColor = '#667eea';
-    selectedBtn.style.color = 'white';
+    selectedBtn.classList.add('selected');
 }
 
 function initializeCharts() {
@@ -137,8 +133,11 @@ function startTest() {
     packetCount = 0;
     elapsedTime = 0;
 
-    // Hide demographics input
-    document.getElementById('demographicsInput').style.display = 'none';
+    // Hide demographics box
+    const demographicsBox = document.querySelector('.demographics-box');
+    if (demographicsBox) {
+        demographicsBox.style.display = 'none';
+    }
 
     // Hide start button, show stop button
     document.getElementById('startTestBtn').style.display = 'none';
@@ -149,9 +148,14 @@ function startTest() {
     document.getElementById('newTestBtn').style.display = 'none';
 
     // Update status
+    const statusText = document.getElementById('statusText');
+    if (statusText) {
+        statusText.textContent = 'Testing...';
+    }
     const statusBadge = document.getElementById('statusBadge');
-    statusBadge.textContent = 'Testing...';
-    statusBadge.classList.add('running');
+    if (statusBadge) {
+        statusBadge.classList.add('running');
+    }
 
     // Reset charts
 
@@ -236,10 +240,15 @@ function stopTest() {
     document.getElementById('stopTestBtn').style.display = 'none';
     
     // Update status
+    const statusText = document.getElementById('statusText');
+    if (statusText) {
+        statusText.textContent = 'Stopped';
+    }
     const statusBadge = document.getElementById('statusBadge');
-    statusBadge.textContent = 'Stopped';
-    statusBadge.classList.remove('running');
-    statusBadge.classList.add('complete');
+    if (statusBadge) {
+        statusBadge.classList.remove('running');
+        statusBadge.classList.add('complete');
+    }
 }
 
 function updateElapsedTime() {
@@ -348,10 +357,15 @@ function completeTest() {
     document.getElementById('stopTestBtn').style.display = 'none';
     
     // Update status
+    const statusText = document.getElementById('statusText');
+    if (statusText) {
+        statusText.textContent = 'Complete';
+    }
     const statusBadge = document.getElementById('statusBadge');
-    statusBadge.textContent = 'Complete';
-    statusBadge.classList.remove('running');
-    statusBadge.classList.add('complete');
+    if (statusBadge) {
+        statusBadge.classList.remove('running');
+        statusBadge.classList.add('complete');
+    }
     
     // Update progress to 100%
     document.getElementById('progressFill').style.width = '100%';
