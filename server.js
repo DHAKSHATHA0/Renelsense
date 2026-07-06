@@ -8,24 +8,120 @@ const cors = require('cors');
 const path = require('path');
 const fetch = require('node-fetch');
 
-// Import database module (default: file-backed in-memory DB)
-let dbModule = require('./db');
-let db = dbModule.db;
-let createUser = dbModule.createUser;
-let getUserByEmail = dbModule.getUserByEmail;
-let getUserById = dbModule.getUserById;
-let verifyPassword = dbModule.verifyPassword;
-let saveMedicalTest = dbModule.saveMedicalTest;
-let saveTestResults = dbModule.saveTestResults;
-let getUserTests = dbModule.getUserTests;
-let saveRecommendation = dbModule.saveRecommendation;
-let getTestRecommendations = dbModule.getTestRecommendations;
-let saveChatMessage = dbModule.saveChatMessage;
-let getSessionHistory = dbModule.getSessionHistory;
-let createHealthAlert = dbModule.createHealthAlert;
-let getUserAlerts = dbModule.getUserAlerts;
-let markAlertAsRead = dbModule.markAlertAsRead;
-let getDatabaseStats = dbModule.getDatabaseStats;
+// Import database modules
+const fileDb = require('./backend/db');
+const mysqlDb = require('./backend/db-mysql');
+
+// Track which DB is active
+let usingMySQL = false;
+let mysqlReconnectTimer = null;
+
+// Start with file DB functions (safe default)
+let dbModule = fileDb;
+let db = fileDb.db;
+let createUser = fileDb.createUser;
+let getUserByEmail = fileDb.getUserByEmail;
+let getUserById = fileDb.getUserById;
+let verifyPassword = fileDb.verifyPassword;
+let saveMedicalTest = fileDb.saveMedicalTest;
+let saveTestResults = fileDb.saveTestResults;
+let getUserTests = fileDb.getUserTests;
+let saveRecommendation = fileDb.saveRecommendation;
+let getTestRecommendations = fileDb.getTestRecommendations;
+let saveChatMessage = fileDb.saveChatMessage;
+let getSessionHistory = fileDb.getSessionHistory;
+let createHealthAlert = fileDb.createHealthAlert;
+let getUserAlerts = fileDb.getUserAlerts;
+let markAlertAsRead = fileDb.markAlertAsRead;
+let getDatabaseStats = fileDb.getDatabaseStats;
+
+function switchToMySQL() {
+    usingMySQL = true;
+    dbModule = mysqlDb;
+    createUser = mysqlDb.createUser;
+    getUserByEmail = mysqlDb.getUserByEmail;
+    getUserById = mysqlDb.getUserById;
+    verifyPassword = mysqlDb.verifyPassword;
+    saveMedicalTest = mysqlDb.saveMedicalTest;
+    saveTestResults = mysqlDb.saveTestResults;
+    getUserTests = mysqlDb.getUserTests;
+    saveRecommendation = mysqlDb.saveRecommendation;
+    getTestRecommendations = mysqlDb.getTestRecommendations;
+    saveChatMessage = mysqlDb.saveChatMessage;
+    getSessionHistory = mysqlDb.getSessionHistory;
+    createHealthAlert = mysqlDb.createHealthAlert;
+    getUserAlerts = mysqlDb.getUserAlerts;
+    markAlertAsRead = mysqlDb.markAlertAsRead;
+    getDatabaseStats = mysqlDb.getDatabaseStats;
+    console.log('✅ Switched to MySQL database');
+}
+
+function switchToFileDB() {
+    usingMySQL = false;
+    dbModule = fileDb;
+    createUser = fileDb.createUser;
+    getUserByEmail = fileDb.getUserByEmail;
+    getUserById = fileDb.getUserById;
+    verifyPassword = fileDb.verifyPassword;
+    saveMedicalTest = fileDb.saveMedicalTest;
+    saveTestResults = fileDb.saveTestResults;
+    getUserTests = fileDb.getUserTests;
+    saveRecommendation = fileDb.saveRecommendation;
+    getTestRecommendations = fileDb.getTestRecommendations;
+    saveChatMessage = fileDb.saveChatMessage;
+    getSessionHistory = fileDb.getSessionHistory;
+    createHealthAlert = fileDb.createHealthAlert;
+    getUserAlerts = fileDb.getUserAlerts;
+    markAlertAsRead = fileDb.markAlertAsRead;
+    getDatabaseStats = fileDb.getDatabaseStats;
+    console.log('⚠️ Switched to file-based fallback DB');
+}
+
+// Sync fallback users/data back to MySQL when it recovers
+async function syncFallbackToMySQL() {
+    try {
+        const fallbackUsers = fileDb.db.users || [];
+        for (const user of fallbackUsers) {
+            try {
+                const existing = await mysqlDb.getUserByEmail(user.email);
+                if (!existing) {
+                    // Re-insert user with existing passwordHash directly
+                    const { v4: uuidv4 } = require('uuid');
+                    const conn = await mysqlDb.pool.getConnection();
+                    await conn.execute(
+                        `INSERT IGNORE INTO users (id, firstName, lastName, email, phone, passwordHash) VALUES (?,?,?,?,?,?)`,
+                        [user.id, user.firstName, user.lastName, user.email, user.phone || '', user.passwordHash]
+                    );
+                    conn.release();
+                    console.log(`✅ Synced fallback user to MySQL: ${user.email}`);
+                }
+            } catch (e) {
+                console.error(`⚠️ Could not sync user ${user.email}:`, e.message);
+            }
+        }
+    } catch (e) {
+        console.error('Sync error:', e.message);
+    }
+}
+
+// Periodically try to reconnect to MySQL when it's down
+function startMySQLReconnect() {
+    if (mysqlReconnectTimer) return;
+    mysqlReconnectTimer = setInterval(async () => {
+        try {
+            const conn = await mysqlDb.pool.getConnection();
+            conn.release();
+            console.log('✅ MySQL reconnected!');
+            clearInterval(mysqlReconnectTimer);
+            mysqlReconnectTimer = null;
+            await mysqlDb.initializeDatabase();
+            await syncFallbackToMySQL();
+            switchToMySQL();
+        } catch (e) {
+            console.log('⏳ MySQL still down, retrying in 30s...');
+        }
+    }, 30000);
+}
 
 // Create Express app
 const app = express();
@@ -80,58 +176,33 @@ app.post('/api/auth/register', async (req, res) => {
     try {
         const { firstName, lastName, email, phone, password, confirmPassword } = req.body;
 
-        // Validate inputs
         if (!firstName || !lastName || !email || !password) {
-            return res.status(400).json({
-                success: false,
-                message: 'Please provide all required fields'
-            });
+            return res.status(400).json({ success: false, message: 'Please provide all required fields' });
         }
-
         if (password !== confirmPassword) {
-            return res.status(400).json({
-                success: false,
-                message: 'Passwords do not match'
-            });
+            return res.status(400).json({ success: false, message: 'Passwords do not match' });
         }
-
         if (password.length < 8) {
-            return res.status(400).json({
-                success: false,
-                message: 'Password must be at least 8 characters'
-            });
+            return res.status(400).json({ success: false, message: 'Password must be at least 8 characters' });
         }
 
-        // Create user in database
         const user = await createUser(firstName, lastName, email, phone, password);
-        
-        console.log(`✅ New user registered: ${email}`);
+        console.log(`✅ New user registered: ${email} (${usingMySQL ? 'MySQL' : 'fallback DB'})`);
+        if (!usingMySQL) {
+            console.log('⚠️ Registered in fallback DB — will sync to MySQL when it recovers');
+        }
 
         res.status(201).json({
             success: true,
-            message: 'Account created successfully',
-            user: {
-                id: user.id,
-                firstName: user.firstName,
-                lastName: user.lastName,
-                email: user.email
-            }
+            message: usingMySQL ? 'Account created successfully' : 'Account created (offline mode — will sync when DB recovers)',
+            user: { id: user.id, firstName: user.firstName, lastName: user.lastName, email: user.email }
         });
     } catch (error) {
         console.error('Registration error:', error);
-        
         if (error.message.includes('Email already registered')) {
-            return res.status(409).json({
-                success: false,
-                message: 'Email already registered'
-            });
+            return res.status(409).json({ success: false, message: 'Email already registered' });
         }
-
-        res.status(500).json({
-            success: false,
-            message: 'Registration failed',
-            error: error.message
-        });
+        res.status(500).json({ success: false, message: 'Registration failed: ' + error.message });
     }
 });
 
@@ -143,53 +214,40 @@ app.post('/api/auth/login', async (req, res) => {
         const { email, password } = req.body;
 
         if (!email || !password) {
-            return res.status(400).json({
-                success: false,
-                message: 'Email and password required'
-            });
+            return res.status(400).json({ success: false, message: 'Email and password required' });
         }
 
-        // Get user from database
-        const user = await getUserByEmail(email);
+        let user = await getUserByEmail(email);
+
+        // If MySQL is down and user not in fallback, try to give a helpful message
+        if (!user && !usingMySQL) {
+            return res.status(503).json({
+                success: false,
+                message: 'Database is temporarily offline. If you registered before, please wait for reconnection and try again.'
+            });
+        }
 
         if (!user) {
-            return res.status(401).json({
-                success: false,
-                message: 'User not found'
-            });
+            return res.status(401).json({ success: false, message: 'User not found' });
         }
 
-        // Verify password (support both `password` and `passwordHash` fields)
         const storedPasswordHash = user.passwordHash || user.password || '';
         const isPasswordValid = await verifyPassword(password, storedPasswordHash);
 
         if (!isPasswordValid) {
-            return res.status(401).json({
-                success: false,
-                message: 'Incorrect password'
-            });
+            return res.status(401).json({ success: false, message: 'Incorrect password' });
         }
 
-        console.log(`✅ User logged in: ${email}`);
+        console.log(`✅ User logged in: ${email} (${usingMySQL ? 'MySQL' : 'fallback DB'})`);
 
         res.status(200).json({
             success: true,
             message: 'Login successful',
-            user: {
-                id: user.id,
-                firstName: user.firstName,
-                lastName: user.lastName,
-                email: user.email,
-                phone: user.phone
-            }
+            user: { id: user.id, firstName: user.firstName, lastName: user.lastName, email: user.email, phone: user.phone }
         });
     } catch (error) {
         console.error('Login error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Login failed',
-            error: error.message
-        });
+        res.status(500).json({ success: false, message: 'Login failed: ' + error.message });
     }
 });
 
@@ -289,6 +347,28 @@ app.get('/api/dashboard/:userId', async (req, res) => {
     } catch (error) {
         console.error('Error fetching dashboard:', error);
         res.status(500).json({ success: false, message: 'Failed to fetch dashboard', error: error.message });
+    }
+});
+
+/**
+ * Get user profile
+ */
+app.get('/api/user/:userId/profile', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const user = await getUserById(userId);
+        if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+        const tests = await getUserTests(userId);
+        const alerts = await getUserAlerts(userId, false);
+        res.json({
+            success: true,
+            user: { id: user.id, firstName: user.firstName, lastName: user.lastName, email: user.email, phone: user.phone },
+            totalTests: tests.length,
+            latestTest: tests[0] || null,
+            unreadAlerts: alerts.filter(a => !a.read).length
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Failed to fetch profile', error: error.message });
     }
 });
 
@@ -1948,36 +2028,17 @@ function simulateTestProgress() {
 // Start the server (with optional MySQL initialization)
 async function startServer() {
     try {
-        // If DB env is provided prefer MySQL module
+        // Try to connect to MySQL
         if (process.env.DB_HOST || process.env.DB_USER || process.env.DB_NAME) {
             try {
-                const dbMysql = require('./db-mysql');
-                if (dbMysql.initializeDatabase) {
-                    console.log('Initializing MySQL database...');
-                    await dbMysql.initializeDatabase();
-                }
-
-                // Rebind DB functions to use MySQL implementation
-                dbModule = dbMysql;
-                db = dbModule.db || db;
-                createUser = dbModule.createUser || createUser;
-                getUserByEmail = dbModule.getUserByEmail || getUserByEmail;
-                getUserById = dbModule.getUserById || getUserById;
-                verifyPassword = dbModule.verifyPassword || verifyPassword;
-                saveMedicalTest = dbModule.saveMedicalTest || saveMedicalTest;
-                saveTestResults = dbModule.saveTestResults || saveTestResults;
-                getUserTests = dbModule.getUserTests || getUserTests;
-                saveRecommendation = dbModule.saveRecommendation || saveRecommendation;
-                getTestRecommendations = dbModule.getTestRecommendations || getTestRecommendations;
-                saveChatMessage = dbModule.saveChatMessage || saveChatMessage;
-                getSessionHistory = dbModule.getSessionHistory || getSessionHistory;
-                createHealthAlert = dbModule.createHealthAlert || createHealthAlert;
-                getUserAlerts = dbModule.getUserAlerts || getUserAlerts;
-                markAlertAsRead = dbModule.markAlertAsRead || markAlertAsRead;
-                getDatabaseStats = dbModule.getDatabaseStats || getDatabaseStats;
-                console.log('Using MySQL database module');
+                const conn = await mysqlDb.pool.getConnection();
+                conn.release();
+                await mysqlDb.initializeDatabase();
+                switchToMySQL();
             } catch (err) {
-                console.error('Failed to initialize MySQL module, falling back to file DB:', err.message || err);
+                console.error('⚠️ MySQL unavailable, using file-based fallback DB:', err.message);
+                console.log('⏳ Will auto-reconnect to MySQL every 30 seconds...');
+                startMySQLReconnect();
             }
         }
 

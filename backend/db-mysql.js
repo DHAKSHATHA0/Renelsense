@@ -2,14 +2,14 @@
 const mysql = require('mysql2/promise');
 const pool = mysql.createPool({
     host: process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.DB_PORT || '3306'),
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || 'root',
     database: process.env.DB_NAME || 'kidney_monitoring',
     waitForConnections: true,
-    connectionLimit: 10,
+    connectionLimit: parseInt(process.env.DB_CONNECTION_LIMIT || '10'),
     queueLimit: 0,
-    enableKeepAlive: true,
-    keepAliveInitialDelayMs: 0
+    authPlugins: undefined
 });
 
 // Password hashing
@@ -81,7 +81,7 @@ async function initializeDatabase() {
                 type VARCHAR(50),
                 severity VARCHAR(50),
                 message TEXT,
-                read BOOLEAN DEFAULT FALSE,
+                is_read BOOLEAN DEFAULT FALSE,
                 timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
             )
@@ -282,7 +282,7 @@ async function getTestRecommendations(testId) {
     }
 }
 
-async function saveChatMessage(chatData) {
+async function saveChatMessage(userId, sessionId, role, content) {
     const connection = await pool.getConnection();
     try {
         const id = require('uuid').v4();
@@ -290,10 +290,10 @@ async function saveChatMessage(chatData) {
         await connection.execute(
             `INSERT INTO chat_messages (id, userId, sessionId, role, content) 
              VALUES (?, ?, ?, ?, ?)`,
-            [id, chatData.userId, chatData.sessionId, chatData.role, chatData.content]
+            [id, userId, sessionId, role, content]
         );
 
-        return { id, userId: chatData.userId, role: chatData.role, content: chatData.content };
+        return { id, userId, role, content };
     } finally {
         connection.release();
     }
@@ -319,7 +319,7 @@ async function createHealthAlert(userId, type, severity, message) {
         const id = require('uuid').v4();
 
         await connection.execute(
-            `INSERT INTO health_alerts (id, userId, type, severity, message, read) 
+            `INSERT INTO health_alerts (id, userId, type, severity, message, is_read) 
              VALUES (?, ?, ?, ?, ?, ?)`,
             [id, userId, type, severity, message, false]
         );
@@ -337,7 +337,7 @@ async function getUserAlerts(userId, unreadOnly = false) {
         const params = [userId];
 
         if (unreadOnly) {
-            query += ' AND read = FALSE';
+            query += ' AND is_read = FALSE';
         }
 
         query += ' ORDER BY timestamp DESC';
@@ -354,7 +354,7 @@ async function markAlertAsRead(alertId) {
     const connection = await pool.getConnection();
     try {
         await connection.execute(
-            'UPDATE health_alerts SET read = TRUE WHERE id = ?',
+            'UPDATE health_alerts SET is_read = TRUE WHERE id = ?',
             [alertId]
         );
 

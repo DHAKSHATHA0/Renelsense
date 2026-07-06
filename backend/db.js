@@ -158,13 +158,13 @@ function getTestRecommendations(testId) {
 }
 
 // Chat message functions
-function saveChatMessage(chatData) {
+function saveChatMessage(userId, sessionId, role, content) {
     const message = {
         id: crypto.randomUUID(),
-        userId: chatData.userId,
-        sessionId: chatData.sessionId,
-        role: chatData.role, // 'user' or 'assistant'
-        content: chatData.content,
+        userId: userId,
+        sessionId: sessionId,
+        role: role,
+        content: content,
         timestamp: new Date().toISOString()
     };
     database.chatMessages.push(message);

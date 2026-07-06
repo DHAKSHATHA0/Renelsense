@@ -14,6 +14,9 @@ let serverConfig = {
     getAPIURL: function() {
         return `http://${this.serverIP}:${this.serverPort}`;
     },
+    getServerURL: function() {
+        return `http://${this.serverIP}:${this.serverPort}`;
+    },
     getMLApiURL: function() {
         return `http://${this.mlApiIP}:${this.mlApiPort}`;
     }

@@ -19,17 +19,71 @@ class ReportManager {
         // Set test date
         const today = new Date();
         document.getElementById('testDate').textContent = today.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
+            year: 'numeric', month: 'long', day: 'numeric'
         });
 
         // Generate report ID
         const reportId = `RPT-${today.getFullYear()}-${String(this.downloadHistory.length + 1).padStart(3, '0')}`;
         document.getElementById('reportId').textContent = reportId;
 
+        // Load real test results from sessionStorage
+        this.loadTestResults();
         this.loadDownloadHistory();
         this.setupEventListeners();
+    }
+
+    loadTestResults() {
+        const stored = sessionStorage.getItem('lastTestResults') || sessionStorage.getItem('viewingTest');
+        if (!stored) return;
+        const r = JSON.parse(stored);
+
+        // Update eGFR card
+        const eGFRCard = document.querySelector('.result-card:nth-child(2)');
+        const allCards = document.querySelectorAll('.result-card');
+
+        // Map result data to report cards by updating values
+        const updates = [
+            { selector: '.result-card:nth-child(1) .result-value', value: r.creatinine ? `${r.creatinine} mg/dL` : '0.9 mg/dL' },
+            { selector: '.result-card:nth-child(1) .status', value: r.creatinine && r.creatinine <= 1.3 ? 'Normal' : 'Elevated', cls: r.creatinine && r.creatinine <= 1.3 ? 'normal' : 'elevated' },
+            { selector: '.result-card:nth-child(2) .result-value', value: r.eGFR ? `${r.eGFR} mL/min` : '95 mL/min' },
+            { selector: '.result-card:nth-child(2) .status', value: r.eGFR >= 90 ? 'Normal' : r.eGFR >= 60 ? 'Mild' : 'Reduced', cls: r.eGFR >= 60 ? 'normal' : 'warning' },
+            { selector: '.result-card:nth-child(3) .result-value', value: r.ureaLevel ? `${r.ureaLevel} mg/dL` : '18 mg/dL' },
+            { selector: '.result-card:nth-child(3) .status', value: r.ureaLevel && r.ureaLevel <= 20 ? 'Normal' : 'Elevated', cls: r.ureaLevel && r.ureaLevel <= 20 ? 'normal' : 'elevated' },
+            { selector: '.result-card:nth-child(4) .result-value', value: r.potassium ? `${r.potassium} mEq/L` : '4.2 mEq/L' },
+            { selector: '.result-card:nth-child(4) .status', value: r.potassium && r.potassium >= 3.5 && r.potassium <= 5.0 ? 'Normal' : 'Abnormal', cls: r.potassium && r.potassium >= 3.5 && r.potassium <= 5.0 ? 'normal' : 'warning' }
+        ];
+
+        updates.forEach(u => {
+            const el = document.querySelector(u.selector);
+            if (el) {
+                el.textContent = u.value;
+                if (u.cls) { el.className = `status ${u.cls}`; }
+            }
+        });
+
+        // Update summary
+        const summaryBox = document.querySelector('.summary-box');
+        if (summaryBox && r.eGFR) {
+            const stage = r.stage || r.status || 'Normal Function';
+            const riskColor = r.riskLevel === 'Low' ? '#28a745' : r.riskLevel === 'Medium' ? '#ffc107' : '#dc3545';
+            summaryBox.innerHTML = `
+                <h3>Overall Assessment</h3>
+                <p>Your test results indicate <strong>${stage}</strong>. Risk Level: <strong style="color:${riskColor}">${r.riskLevel || 'Low'}</strong>.</p>
+                <h3 style="margin-top:16px;">Key Findings:</h3>
+                <ul>
+                    <li>✓ eGFR: ${r.eGFR} mL/min/1.73m² (${stage})</li>
+                    <li>✓ Heart Rate: ${r.heartRate || '--'} BPM</li>
+                    <li>✓ Temperature: ${r.temperature || '--'}°C</li>
+                    <li>✓ SpO2: ${r.spo2 || '--'}%</li>
+                    <li>✓ Confidence Score: ${r.confidence || '--'}%</li>
+                </ul>
+            `;
+        }
+
+        // Update test date if available
+        if (r.date) {
+            document.getElementById('testDate').textContent = r.date;
+        }
     }
 
     setupEventListeners() {
@@ -50,43 +104,33 @@ class ReportManager {
     }
 
     downloadReport() {
-        const reportContent = document.getElementById('reportContent');
         const today = new Date();
         const reportId = document.getElementById('reportId').textContent;
+        const stored = sessionStorage.getItem('lastTestResults') || sessionStorage.getItem('viewingTest');
+        const r = stored ? JSON.parse(stored) : {};
 
-        // Create report text content
         let textContent = `KIDNEY HEALTH TEST REPORT\n`;
         textContent += `=====================================\n\n`;
         textContent += `PATIENT INFORMATION\n`;
-        textContent += `${document.getElementById('patientName').textContent}\n`;
+        textContent += `Name: ${document.getElementById('patientName').textContent}\n`;
         textContent += `Email: ${document.getElementById('patientEmail').textContent}\n`;
         textContent += `Test Date: ${document.getElementById('testDate').textContent}\n`;
         textContent += `Report ID: ${reportId}\n\n`;
-
-        // Add test results
         textContent += `KIDNEY FUNCTION TEST RESULTS\n`;
         textContent += `=====================================\n`;
+        textContent += `eGFR: ${r.eGFR || '--'} mL/min/1.73m\u00b2\n`;
+        textContent += `Creatinine: ${r.creatinine || '--'} mg/dL\n`;
+        textContent += `Urea (BUN): ${r.ureaLevel || '--'} mg/dL\n`;
+        textContent += `Potassium: ${r.potassium || '--'} mEq/L\n`;
+        textContent += `Heart Rate: ${r.heartRate || '--'} BPM\n`;
+        textContent += `Temperature: ${r.temperature || '--'}\u00b0C\n`;
+        textContent += `SpO2: ${r.spo2 || '--'}%\n`;
+        textContent += `Risk Level: ${r.riskLevel || '--'}\n`;
+        textContent += `Stage: ${r.stage || r.status || '--'}\n`;
+        textContent += `Confidence: ${r.confidence || '--'}%\n\n`;
+        textContent += `SUMMARY\n=====================================\n`;
+        textContent += `Overall: ${r.stage || r.status || 'Normal Kidney Function'}\n`;
 
-        const resultCards = document.querySelectorAll('.result-card');
-        resultCards.forEach((card) => {
-            const title = card.querySelector('h3').textContent;
-            const value = card.querySelector('.result-value').textContent;
-            const normal = card.querySelector('.result-normal').textContent;
-            const status = card.querySelector('.status').textContent;
-
-            textContent += `\n${title}\n`;
-            textContent += `Value: ${value}\n`;
-            textContent += `${normal}\n`;
-            textContent += `Status: ${status}\n`;
-        });
-
-        // Add summary
-        textContent += `\n\nSUMMARY & INTERPRETATION\n`;
-        textContent += `=====================================\n`;
-        textContent += `Your test results indicate Normal Kidney Function.\n`;
-        textContent += `All key metrics are within the normal range.\n\n`;
-
-        // Create and download file
         const blob = new Blob([textContent], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
@@ -95,20 +139,16 @@ class ReportManager {
         link.click();
         URL.revokeObjectURL(url);
 
-        // Add to download history
         const historyItem = {
             id: Date.now(),
-            reportId: reportId,
+            reportId,
             fileName: `kidney-test-report-${today.toISOString().split('T')[0]}.txt`,
             downloadDate: today.toLocaleString(),
             patientName: document.getElementById('patientName').textContent
         };
-
         this.downloadHistory.push(historyItem);
         localStorage.setItem('downloadHistory', JSON.stringify(this.downloadHistory));
         this.loadDownloadHistory();
-
-        // Show success message
         this.showToast('Report downloaded successfully!', 'success');
     }
 

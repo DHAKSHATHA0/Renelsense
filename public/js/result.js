@@ -21,8 +21,10 @@ async function initResultPage() {
 document.addEventListener('DOMContentLoaded', initResultPage);
 
 function initializeResultData() {
-    // Simulate getting result from test
-    const testResults = {
+    // Read results from sessionStorage (set by live-test.js after test completes)
+    const stored = sessionStorage.getItem('lastTestResults') || sessionStorage.getItem('viewingTest');
+    const testResults = stored ? JSON.parse(stored) : {
+        testId: 'TEST-00001',
         eGFR: 78,
         heartRate: 72,
         temperature: 36.8,
@@ -30,30 +32,45 @@ function initializeResultData() {
         confidence: 94,
         riskLevel: 'Low',
         status: 'Normal Function',
-        stage: 'Normal Function'
+        stage: 'Stage 1 - Normal',
+        date: new Date().toLocaleDateString(),
+        time: new Date().toLocaleTimeString()
     };
     
     // Store current results for chatbot
     currentTestResults = testResults;
-    
-    // Save to sessionStorage for chatbot access
     sessionStorage.setItem('patientResults', JSON.stringify(testResults));
     
     // Save to history if history manager is available
     if (typeof window.saveTestToHistory === 'function') {
         window.saveTestToHistory(testResults);
     }
+
+    // Update test ID and time in header
+    const testIdEl = document.getElementById('testId');
+    const testTimeEl = document.getElementById('testTime');
+    if (testIdEl) testIdEl.textContent = testResults.testId || 'TEST-00001';
+    if (testTimeEl) testTimeEl.textContent = (testResults.date || '') + ' ' + (testResults.time || '');
     
     // Display eGFR
     displayEGFR(testResults.eGFR);
     
     // Update metrics
-    document.getElementById('resultHR').textContent = testResults.heartRate + ' BPM';
-    document.getElementById('resultTemp').textContent = testResults.temperature + '°C';
-    document.getElementById('dataQuality').textContent = testResults.quality + '%';
-    document.getElementById('confidence').textContent = testResults.confidence + '%';
-    document.getElementById('riskLevel').textContent = testResults.riskLevel;
-    document.getElementById('ckdStage').textContent = testResults.stage;
+    document.getElementById('resultHR').textContent = (testResults.heartRate || '--') + ' BPM';
+    document.getElementById('resultTemp').textContent = (testResults.temperature || '--') + '°C';
+    document.getElementById('dataQuality').textContent = (testResults.quality || '--') + '%';
+    document.getElementById('confidence').textContent = (testResults.confidence || '--') + '%';
+    document.getElementById('riskLevel').textContent = testResults.riskLevel || '--';
+    document.getElementById('ckdStage').textContent = testResults.stage || testResults.status || '--';
+
+    // Update health status badge
+    const healthStatusEl = document.getElementById('healthStatus');
+    if (healthStatusEl) {
+        const risk = (testResults.riskLevel || 'Low').toLowerCase();
+        const iconClass = risk === 'low' ? 'fa-check-circle' : risk === 'medium' ? 'fa-exclamation-circle' : 'fa-times-circle';
+        const label = risk === 'low' ? 'Healthy' : risk === 'medium' ? 'Monitor' : 'At Risk';
+        healthStatusEl.innerHTML = `<i class="fas ${iconClass}"></i><span>${label}</span>`;
+    }
 }
 
 function displayEGFR(value) {

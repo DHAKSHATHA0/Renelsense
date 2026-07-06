@@ -11,7 +11,7 @@ class TestHistory {
         }
     }
 
-    // Get all tests
+    // Get all tests from localStorage
     getAllTests() {
         return JSON.parse(localStorage.getItem(this.storageKey) || '[]');
     }
@@ -20,21 +20,54 @@ class TestHistory {
     addTest(testData) {
         const tests = this.getAllTests();
         const newTest = {
-            id: `TEST-${Date.now()}`,
-            timestamp: new Date().toISOString(),
-            date: new Date().toLocaleDateString(),
-            time: new Date().toLocaleTimeString(),
+            id: testData.testId || `TEST-${Date.now()}`,
+            timestamp: testData.timestamp || new Date().toISOString(),
+            date: testData.date || new Date().toLocaleDateString(),
+            time: testData.time || new Date().toLocaleTimeString(),
             ...testData
         };
-        tests.unshift(newTest); // Add to beginning (newest first)
-        localStorage.setItem(this.storageKey, JSON.stringify(tests));
+        // Avoid duplicates by testId
+        if (!tests.find(t => t.id === newTest.id)) {
+            tests.unshift(newTest);
+            localStorage.setItem(this.storageKey, JSON.stringify(tests));
+        }
         return newTest;
     }
 
     // Get test by ID
     getTestById(testId) {
-        const tests = this.getAllTests();
-        return tests.find(test => test.id === testId);
+        return this.getAllTests().find(test => test.id === testId);
+    }
+
+    // Merge DB tests into localStorage
+    mergeDBTests(dbTests) {
+        const local = this.getAllTests();
+        const localIds = new Set(local.map(t => t.id));
+        dbTests.forEach(t => {
+            const id = t.testId || t.id;
+            if (!localIds.has(id)) {
+                local.push({
+                    id,
+                    timestamp: t.timestamp,
+                    date: t.timestamp ? new Date(t.timestamp).toLocaleDateString() : '--',
+                    time: t.timestamp ? new Date(t.timestamp).toLocaleTimeString() : '--',
+                    eGFR: t.eGFR,
+                    heartRate: t.heartRate,
+                    temperature: t.temperature,
+                    spo2: t.spo2,
+                    creatinine: t.creatinine,
+                    ureaLevel: t.ureaLevel,
+                    potassium: t.potassium,
+                    riskLevel: t.riskLevel,
+                    status: t.analysis || t.status,
+                    stage: t.analysis || t.status,
+                    confidence: t.confidence || '--',
+                    quality: t.quality || '--'
+                });
+            }
+        });
+        local.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        localStorage.setItem(this.storageKey, JSON.stringify(local));
     }
 
     // Clear all tests
@@ -45,38 +78,22 @@ class TestHistory {
     // Export all tests as JSON
     exportAsJSON() {
         const tests = this.getAllTests();
-        const data = {
-            exportDate: new Date().toISOString(),
-            totalTests: tests.length,
-            tests: tests
-        };
-        return JSON.stringify(data, null, 2);
+        return JSON.stringify({ exportDate: new Date().toISOString(), totalTests: tests.length, tests }, null, 2);
     }
 
     // Export as CSV
     exportAsCSV() {
         const tests = this.getAllTests();
         if (tests.length === 0) return '';
-
         const headers = ['Test ID', 'Date', 'Time', 'eGFR', 'Status', 'Risk Level', 'Confidence', 'Heart Rate', 'Temperature', 'Stage'];
         const rows = tests.map(test => [
-            test.id || '',
-            test.date || '',
-            test.time || '',
-            test.eGFR || '--',
-            test.status || '--',
-            test.riskLevel || '--',
-            test.confidence || '--',
-            test.heartRate || '--',
-            test.temperature || '--',
-            test.stage || '--'
+            test.id || '', test.date || '', test.time || '',
+            test.eGFR || '--', test.status || '--', test.riskLevel || '--',
+            test.confidence || '--', test.heartRate || '--',
+            test.temperature || '--', test.stage || '--'
         ]);
-
         let csv = headers.join(',') + '\n';
-        rows.forEach(row => {
-            csv += row.map(cell => `"${cell}"`).join(',') + '\n';
-        });
-
+        rows.forEach(row => { csv += row.map(cell => `"${cell}"`).join(',') + '\n'; });
         return csv;
     }
 }
@@ -84,12 +101,33 @@ class TestHistory {
 // Initialize history manager
 const testHistory = new TestHistory();
 
+// Fetch tests from backend DB and merge
+async function syncFromDB() {
+    try {
+        const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+        if (!currentUser) return;
+        const serverURL = (typeof serverConfig !== 'undefined') ? serverConfig.getAPIURL() : window.location.origin;
+        const res = await fetch(`${serverURL}/api/tests/user/${currentUser.id}`);
+        if (res.ok) {
+            const data = await res.json();
+            if (data.success && data.tests.length > 0) {
+                testHistory.mergeDBTests(data.tests);
+            }
+        }
+    } catch (e) {
+        console.log('DB sync skipped:', e.message);
+    }
+}
+
 // Page initialization
 document.addEventListener('DOMContentLoaded', async function() {
     console.log('History Page Loaded');
     
     // Initialize event listeners
     setupEventListeners();
+
+    // Sync from DB first, then display
+    await syncFromDB();
     
     // Load and display history
     displayHistory();

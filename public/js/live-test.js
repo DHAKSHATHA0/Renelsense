@@ -345,6 +345,82 @@ function simulateTestData() {
     }, 100);
 }
 
+function generateMockMLResults() {
+    const demographics = JSON.parse(sessionStorage.getItem('patientDemographics') || '{"gender":"male","age":35}');
+    const age = demographics.age || 35;
+    // Age-adjusted eGFR mock: younger = higher eGFR
+    const baseEGFR = Math.max(30, 110 - (age * 0.3) + (Math.random() * 20 - 10));
+    const eGFR = parseFloat(baseEGFR.toFixed(1));
+    const heartRate = Math.floor(62 + Math.random() * 20);
+    const temperature = parseFloat((36.4 + Math.random() * 0.8).toFixed(1));
+    const spo2 = parseFloat((96 + Math.random() * 3).toFixed(1));
+    const creatinine = parseFloat((0.6 + Math.random() * 0.8).toFixed(2));
+    const ureaLevel = parseFloat((10 + Math.random() * 12).toFixed(1));
+    const potassium = parseFloat((3.5 + Math.random() * 1.2).toFixed(1));
+    const confidence = parseFloat((88 + Math.random() * 11).toFixed(1));
+    const dataQualityVal = parseFloat((90 + Math.random() * 9).toFixed(1));
+
+    let riskLevel, status, stage;
+    if (eGFR >= 90) { riskLevel = 'Low'; status = 'Normal Function'; stage = 'Stage 1 - Normal'; }
+    else if (eGFR >= 60) { riskLevel = 'Low'; status = 'Mildly Reduced'; stage = 'Stage 2 - Mild'; }
+    else if (eGFR >= 45) { riskLevel = 'Medium'; status = 'Mild-Moderate Reduction'; stage = 'Stage 3a'; }
+    else if (eGFR >= 30) { riskLevel = 'High'; status = 'Moderate-Severe Reduction'; stage = 'Stage 3b'; }
+    else { riskLevel = 'Critical'; status = 'Severe Reduction'; stage = 'Stage 4-5'; }
+
+    const testId = 'TEST-' + String(Math.floor(Math.random() * 100000)).padStart(5, '0');
+    const now = new Date();
+
+    return {
+        testId,
+        timestamp: now.toISOString(),
+        date: now.toLocaleDateString(),
+        time: now.toLocaleTimeString(),
+        eGFR, heartRate, temperature, spo2,
+        creatinine, ureaLevel, potassium,
+        confidence, quality: dataQualityVal,
+        riskLevel, status, stage,
+        gender: demographics.gender,
+        age
+    };
+}
+
+async function saveTestResultsToDB(results) {
+    try {
+        const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+        if (!currentUser) return;
+
+        const serverURL = (typeof serverConfig !== 'undefined') ? serverConfig.getAPIURL() : window.location.origin;
+
+        await fetch(`${serverURL}/api/tests/save`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                userId: currentUser.id,
+                testData: {
+                    type: 'kidney_function',
+                    gender: results.gender,
+                    age: results.age,
+                    parameters: { spo2: results.spo2, creatinine: results.creatinine }
+                },
+                resultsData: {
+                    eGFR: results.eGFR,
+                    creatinine: results.creatinine,
+                    ureaLevel: results.ureaLevel,
+                    potassium: results.potassium,
+                    heartRate: results.heartRate,
+                    spo2: results.spo2,
+                    temperature: results.temperature,
+                    analysis: results.status,
+                    riskLevel: results.riskLevel
+                }
+            })
+        });
+        console.log('✅ Test results saved to DB');
+    } catch (err) {
+        console.error('Failed to save test to DB:', err);
+    }
+}
+
 function completeTest() {
     testActive = false;
     
@@ -358,9 +434,7 @@ function completeTest() {
     
     // Update status
     const statusText = document.getElementById('statusText');
-    if (statusText) {
-        statusText.textContent = 'Complete';
-    }
+    if (statusText) statusText.textContent = 'Complete';
     const statusBadge = document.getElementById('statusBadge');
     if (statusBadge) {
         statusBadge.classList.remove('running');
@@ -370,6 +444,12 @@ function completeTest() {
     // Update progress to 100%
     document.getElementById('progressFill').style.width = '100%';
     document.getElementById('progressPercent').textContent = '100%';
+
+    // Generate mock ML results and persist
+    const mlResults = generateMockMLResults();
+    sessionStorage.setItem('lastTestResults', JSON.stringify(mlResults));
+    sessionStorage.setItem('patientResults', JSON.stringify(mlResults));
+    saveTestResultsToDB(mlResults);
     
     // Show completion buttons
     setTimeout(() => {
@@ -377,7 +457,7 @@ function completeTest() {
         document.getElementById('newTestBtn').style.display = 'inline-flex';
         
         // Update final progress stage
-        document.querySelectorAll('.stage').forEach((stage, idx) => {
+        document.querySelectorAll('.stage').forEach((stage) => {
             stage.classList.remove('active');
             const icon = stage.querySelector('i');
             if (icon) icon.className = 'fas fa-circle-check';
