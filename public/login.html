@@ -73,29 +73,6 @@
 
     <div class="toast" id="toast"></div>
 
-    <script>
-        // Initialize demo user if no users exist
-        (function() {
-            const users = JSON.parse(localStorage.getItem('users')) || [];
-            if (users.length === 0) {
-                const demoUser = {
-                    id: 1,
-                    firstName: 'Demo',
-                    lastName: 'User',
-                    email: 'demo@example.com',
-                    phone: '1234567890',
-                    password: btoa('Demo1234'), // Base64 encoded password
-                    createdAt: new Date().toISOString(),
-                    chatHistory: [],
-                    testResults: [],
-                    reports: []
-                };
-                localStorage.setItem('users', JSON.stringify([demoUser]));
-                console.log('Demo user created - Email: demo@example.com, Password: Demo1234');
-            }
-        })();
-    </script>
-
     <script src="js/auth.js"></script>
 </body>
 </html>

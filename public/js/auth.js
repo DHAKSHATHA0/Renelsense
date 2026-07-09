@@ -113,6 +113,27 @@ class AuthManager {
         }
     }
 
+    // Fetch full user details from DB
+    async fetchCurrentUser() {
+        try {
+            const user = this.loadUser();
+            if (!user || !user.id) return null;
+
+            const response = await fetch(`${this.serverURL}/api/auth/me/${user.id}`);
+            const data = await response.json();
+
+            if (data.success) {
+                // Update localStorage with latest data from DB
+                this.saveUser(data.user);
+                return data;
+            }
+            return null;
+        } catch (error) {
+            console.error('Failed to fetch user from DB:', error);
+            return null;
+        }
+    }
+
     // Logout user
     logout() {
         localStorage.removeItem('currentUser');

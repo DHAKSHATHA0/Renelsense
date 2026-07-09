@@ -125,7 +125,7 @@ function startMySQLReconnect() {
 
 // Create Express app
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000; // Railway sets PORT automatically
 
 // Middleware
 app.use(cors());
@@ -203,6 +203,40 @@ app.post('/api/auth/register', async (req, res) => {
             return res.status(409).json({ success: false, message: 'Email already registered' });
         }
         res.status(500).json({ success: false, message: 'Registration failed: ' + error.message });
+    }
+});
+
+// Fetch current user details from DB by userId
+app.get('/api/auth/me/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        if (!userId) return res.status(400).json({ success: false, message: 'User ID required' });
+
+        const user = await getUserById(userId);
+        if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+        const tests = await getUserTests(userId);
+        const alerts = await getUserAlerts(userId, false);
+
+        res.json({
+            success: true,
+            user: {
+                id: user.id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+                phone: user.phone,
+                createdAt: user.createdAt
+            },
+            stats: {
+                totalTests: tests.length,
+                latestTest: tests[0] || null,
+                unreadAlerts: alerts.filter(a => !a.is_read).length
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching user:', error);
+        res.status(500).json({ success: false, message: 'Failed to fetch user: ' + error.message });
     }
 });
 
@@ -2029,7 +2063,10 @@ function simulateTestProgress() {
 async function startServer() {
     try {
         // Try to connect to MySQL
-        if (process.env.DB_HOST || process.env.DB_USER || process.env.DB_NAME) {
+        // Check both local and Railway MySQL variable names
+        const hasMysqlConfig = process.env.DB_HOST || process.env.MYSQLHOST ||
+                               process.env.DB_USER || process.env.MYSQLUSER;
+        if (hasMysqlConfig) {
             try {
                 const conn = await mysqlDb.pool.getConnection();
                 conn.release();
@@ -2047,8 +2084,11 @@ async function startServer() {
         const interfaces = os.networkInterfaces();
         let ipAddress = 'localhost';
 
-        // Priority: Use environment variable, then find network IP, then localhost
-        if (process.env.SERVER_IP) {
+        // On Railway/cloud, always bind to 0.0.0.0 and use localhost for display
+        const isProduction = process.env.NODE_ENV === 'production';
+        if (isProduction) {
+            ipAddress = '0.0.0.0';
+        } else if (process.env.SERVER_IP) {
             ipAddress = process.env.SERVER_IP;
         } else {
             // Find the first non-loopback IPv4 address
@@ -2069,10 +2109,10 @@ async function startServer() {
 
         server.listen(PORT, '0.0.0.0', () => {
             console.log(`\n========================================`);
-            console.log(`Server running on http://${ipAddress}:${PORT}`);
-            console.log(`WebSocket server running on ws://${ipAddress}:${PORT}`);
+            console.log(`Server running on port ${PORT}`);
             console.log(`Local: http://localhost:${PORT}`);
-            console.log(`ML API: http://${ML_API_IP}:${ML_API_PORT}`);
+            console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+            console.log(`Database: ${usingMySQL ? 'MySQL' : 'File-based fallback'}`);
             console.log(`========================================\n`);
 
             // Create a config file that clients can use
